@@ -416,4 +416,31 @@ const Rooms = () => {
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
-                        <label htmlFor="room-code-2
+                        <label htmlFor="room-code-2" className="text-sm font-medium">
+                          Room Code
+                        </label>
+                        <Input
+                          id="room-code-2"
+                          placeholder="Enter 6-digit code (e.g. ABC123)"
+                          value={joinCode}
+                          onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleJoinRoom}>Join Room</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
+      </main>
+      
+      <Navbar />
+    </div>
+  );
+};
+
+export default Rooms;
