@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
-import { fetchMovieDetails, Movie } from "@/lib/tmdb";
+import { fetchMovieDetails } from "@/lib/tmdb";
+import { Movie } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserMovie {
