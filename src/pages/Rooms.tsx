@@ -121,7 +121,7 @@ const Rooms = () => {
           id: `member-${Date.now()}`,
           room_id: `room-${Date.now()}`,
           user_id: user.id || "1",
-          role: "admin",
+          role: "admin", // Explicitly stating "admin" as the role
           joined_at: new Date().toISOString(),
           user: user as User
         }
@@ -171,7 +171,7 @@ const Rooms = () => {
               id: `member-${Date.now()}`,
               room_id: roomToJoin.id,
               user_id: user.id || "1",
-              role: "member",
+              role: "member" as const, // Using const assertion to fix the type
               joined_at: new Date().toISOString(),
               user: user as User
             }
