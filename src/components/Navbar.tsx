@@ -1,85 +1,90 @@
 
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Home, Search, Users, User } from "lucide-react";
-import UserAvatar from "./UserAvatar";
-import { User as UserType } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/UserAvatar";
+import { Film, Home, LogOut, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 
-const Navbar = () => {
-  const location = useLocation();
-  const [user, setUser] = useState<Partial<UserType>>({});
+export const Navbar = () => {
+  const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
-    // In a real app, we'd get the user from auth context
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+          
+        if (!error && data) {
+          setProfile(data);
+        }
+      }
+    };
+    
+    fetchProfile();
   }, []);
   
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
   };
   
   return (
-    <div className="bottom-nav py-2">
-      <div className="reelmates-container">
-        <div className="flex justify-around items-center">
-          <Link
-            to="/dashboard"
-            className={`flex flex-col items-center p-2 ${
-              isActive("/dashboard") 
-                ? "text-accent" 
-                : "text-foreground/70 hover:text-foreground"
-            }`}
-          >
-            <Home className="h-5 w-5" />
-            <span className="text-xs mt-1">Home</span>
-          </Link>
+    <nav className="border-b">
+      <div className="container flex items-center justify-between h-16 px-4 mx-auto sm:px-6">
+        <div className="flex items-center">
+          <NavLink to="/dashboard" className="text-xl font-bold mr-8 flex items-center">
+            <Film className="mr-2" />
+            ReelMates
+          </NavLink>
           
-          <Link
-            to="/search"
-            className={`flex flex-col items-center p-2 ${
-              isActive("/search") 
-                ? "text-accent" 
-                : "text-foreground/70 hover:text-foreground"
-            }`}
-          >
-            <Search className="h-5 w-5" />
-            <span className="text-xs mt-1">Search</span>
-          </Link>
-          
-          <Link
-            to="/rooms"
-            className={`flex flex-col items-center p-2 ${
-              isActive("/rooms") 
-                ? "text-accent" 
-                : "text-foreground/70 hover:text-foreground"
-            }`}
-          >
-            <Users className="h-5 w-5" />
-            <span className="text-xs mt-1">Rooms</span>
-          </Link>
-          
-          <Link
-            to="/profile"
-            className={`flex flex-col items-center p-2 ${
-              isActive("/profile") 
-                ? "text-accent" 
-                : "text-foreground/70 hover:text-foreground"
-            }`}
-          >
-            {user.avatar_url ? (
-              <UserAvatar user={user} size="sm" />
-            ) : (
-              <User className="h-5 w-5" />
-            )}
-            <span className="text-xs mt-1">Profile</span>
-          </Link>
+          <div className="hidden md:flex md:items-center md:space-x-4">
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                `text-sm font-medium px-3 py-2 rounded-md flex items-center ${
+                  isActive ? "bg-accent" : "hover:bg-accent/50"
+                }`
+              }
+            >
+              <Home className="mr-2 h-4 w-4" />
+              Dashboard
+            </NavLink>
+            
+            <NavLink
+              to="/rooms"
+              className={({ isActive }) =>
+                `text-sm font-medium px-3 py-2 rounded-md flex items-center ${
+                  isActive ? "bg-accent" : "hover:bg-accent/50"
+                }`
+              }
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Rooms
+            </NavLink>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <UserAvatar 
+            user={{ 
+              name: profile?.username || "User", 
+              imageUrl: profile?.avatar_url || null 
+            }} 
+          />
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <LogOut className="h-5 w-5" />
+            <span className="sr-only">Logout</span>
+          </Button>
         </div>
       </div>
-    </div>
+    </nav>
   );
 };
-
-export default Navbar;

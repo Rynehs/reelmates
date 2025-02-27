@@ -1,46 +1,63 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import SearchBar from "@/components/SearchBar";
-import MovieCard from "@/components/MovieCard";
-import Navbar from "@/components/Navbar";
-import { Movie } from "@/lib/types";
-import { searchMovies, getPopularMovies } from "@/lib/api";
+import { Card, CardContent } from "@/components/ui/card";
+import { MovieCard } from "@/components/MovieCard";
+import { searchMovies, fetchTrendingMovies, Movie } from "@/lib/tmdb";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { SearchIcon, Loader2 } from "lucide-react";
 
 const Search = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Movie[]>([]);
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAddingToList, setIsAddingToList] = useState<Record<number, boolean>>({});
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
-  useEffect(() => {
-    // Check authentication
-    const authenticated = localStorage.getItem("authenticated") === "true";
-    if (!authenticated) {
-      navigate("/");
+  // Fetch trending movies when the page loads
+  const handleInitialLoad = async () => {
+    if (movies.length === 0 && !isLoading) {
+      setIsLoading(true);
+      try {
+        const response = await fetchTrendingMovies();
+        setMovies(response.results);
+      } catch (error: any) {
+        toast({
+          title: "Failed to fetch trending movies",
+          description: error.message || "Please try again later",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+  
+  // Call handleInitialLoad when the component mounts
+  useState(() => {
+    handleInitialLoad();
+  });
+  
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!query.trim()) {
       return;
     }
     
-    // Load popular movies
-    loadPopularMovies();
-  }, [navigate]);
-  
-  const loadPopularMovies = async () => {
     setIsLoading(true);
     try {
-      const movies = await getPopularMovies();
-      setPopularMovies(movies);
-    } catch (error) {
-      console.error("Error fetching popular movies:", error);
+      const results = await searchMovies(query);
+      setMovies(results.results);
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to load movies. Please try again later.",
+        title: "Search failed",
+        description: error.message || "Please try again later",
         variant: "destructive",
       });
     } finally {
@@ -48,141 +65,134 @@ const Search = () => {
     }
   };
   
-  const handleSearch = async (searchQuery: string) => {
-    setQuery(searchQuery);
-    
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-    
-    setIsSearching(true);
-    setIsLoading(true);
-    
+  const addToList = async (movie: Movie, status: "to_watch" | "watched" | "favorite") => {
     try {
-      const results = await searchMovies(searchQuery);
-      setSearchResults(results);
-    } catch (error) {
-      console.error("Error searching movies:", error);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to add movies to your list",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsAddingToList(prev => ({ ...prev, [movie.id]: true }));
+      
+      const { error } = await supabase.from("user_movies").upsert({
+        user_id: session.user.id,
+        movie_id: movie.id,
+        status,
+      });
+      
+      if (error) throw error;
+      
       toast({
-        title: "Search Error",
-        description: "Failed to search movies. Please try again later.",
+        title: "Movie added",
+        description: `"${movie.title}" has been added to your ${status.replace("_", " ")} list`,
+      });
+      
+      // Navigate back to dashboard after adding
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Failed to add movie",
+        description: error.message || "Please try again later",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsAddingToList(prev => ({ ...prev, [movie.id]: false }));
     }
-  };
-  
-  const handleMovieClick = (movieId: number) => {
-    navigate(`/movie/${movieId}`);
   };
   
   return (
-    <div className="min-h-screen pb-20">
-      <header className="app-header py-4">
-        <div className="reelmates-container">
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => navigate(-1)}
-              className="mr-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Back</span>
-            </Button>
-            <h1 className="text-xl font-semibold flex-1">Find Movies</h1>
-          </div>
-          <div className="mt-3">
-            <SearchBar
-              onSearch={handleSearch}
-              placeholder="Search for movies..."
-              initialValue={query}
-            />
-          </div>
-        </div>
-      </header>
-      
-      <main className="reelmates-container py-6">
-        <section className="animate-fade-in">
-          {isSearching ? (
-            <>
-              <h2 className="text-lg font-medium mb-4">
-                {isLoading 
-                  ? "Searching..." 
-                  : searchResults.length > 0 
-                    ? `Results for "${query}"` 
-                    : `No results for "${query}"`}
-              </h2>
-              
-              {isLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="bg-muted rounded-lg aspect-[2/3]"></div>
-                      <div className="mt-2 bg-muted h-4 rounded w-3/4"></div>
-                      <div className="mt-1 bg-muted h-3 rounded w-1/2"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {searchResults.map(movie => (
-                    <MovieCard
-                      key={movie.id}
-                      movie={movie}
-                      onClick={() => handleMovieClick(movie.id)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No movies found matching your search</p>
-                  <Button 
-                    variant="link" 
-                    onClick={() => {
-                      setQuery("");
-                      setIsSearching(false);
-                    }}
-                  >
-                    Clear search
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <h2 className="text-lg font-medium mb-4">Popular Movies</h2>
-              
-              {isLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="bg-muted rounded-lg aspect-[2/3]"></div>
-                      <div className="mt-2 bg-muted h-4 rounded w-3/4"></div>
-                      <div className="mt-1 bg-muted h-3 rounded w-1/2"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {popularMovies.map(movie => (
-                    <MovieCard
-                      key={movie.id}
-                      movie={movie}
-                      onClick={() => handleMovieClick(movie.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      </main>
-      
+    <div className="min-h-screen bg-background">
       <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold">Find Movies</h1>
+          
+          <form onSubmit={handleSearch} className="flex space-x-2">
+            <Input
+              type="text"
+              placeholder="Search for movies..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <SearchIcon className="h-4 w-4" />
+              )}
+              <span className="ml-2">Search</span>
+            </Button>
+          </form>
+          
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : movies.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {movies.map((movie) => (
+                <Card key={movie.id} className="overflow-hidden">
+                  <MovieCard movie={movie} />
+                  <CardContent className="p-4 bg-card flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => addToList(movie, "to_watch")}
+                      disabled={isAddingToList[movie.id]}
+                    >
+                      {isAddingToList[movie.id] ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Watch Later"
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => addToList(movie, "watched")}
+                      disabled={isAddingToList[movie.id]}
+                    >
+                      {isAddingToList[movie.id] ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Watched"
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => addToList(movie, "favorite")}
+                      disabled={isAddingToList[movie.id]}
+                    >
+                      {isAddingToList[movie.id] ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Favorite"
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                {query ? "No movies found for your search" : "Search for movies to add to your list"}
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
