@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/UserAvatar";
+import UserAvatar from "@/components/UserAvatar";
 import { Film, Home, LogOut, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
@@ -76,7 +76,7 @@ export const Navbar = () => {
           <UserAvatar 
             user={{ 
               name: profile?.username || "User", 
-              imageUrl: profile?.avatar_url || null 
+              avatar_url: profile?.avatar_url || null 
             }} 
           />
           <Button variant="ghost" size="icon" onClick={handleLogout}>

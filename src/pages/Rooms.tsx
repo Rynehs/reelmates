@@ -69,6 +69,24 @@ const Rooms = () => {
         return;
       }
       
+      // First, get the room IDs the user is a member of
+      const { data: memberData, error: memberError } = await supabase
+        .from('room_members')
+        .select('room_id')
+        .eq('user_id', session.user.id);
+      
+      if (memberError) throw memberError;
+      
+      if (!memberData || memberData.length === 0) {
+        setRooms([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get the room IDs as an array of strings
+      const roomIds = memberData.map(item => item.room_id);
+      
+      // Then fetch the full room data for those IDs
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -78,10 +96,7 @@ const Rooms = () => {
           created_at,
           created_by
         `)
-        .in('id', supabase
-          .from('room_members')
-          .select('room_id')
-          .eq('user_id', session.user.id));
+        .in('id', roomIds);
       
       if (error) throw error;
       

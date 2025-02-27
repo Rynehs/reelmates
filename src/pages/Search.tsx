@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MovieCard } from "@/components/MovieCard";
+import MovieCard from "@/components/MovieCard";
 import { searchMovies, fetchTrendingMovies, Movie } from "@/lib/tmdb";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
