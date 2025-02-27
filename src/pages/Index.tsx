@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthForm from "@/components/AuthForm";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -10,19 +12,35 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Check if user is already authenticated
-    const authenticated = localStorage.getItem("authenticated") === "true";
-    setIsAuthenticated(authenticated);
-    setIsLoading(false);
+    // Check if user is already authenticated with Supabase
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setIsAuthenticated(true);
+        navigate("/dashboard");
+      }
+      
+      setIsLoading(false);
+      
+      // Subscribe to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setIsAuthenticated(!!session);
+          
+          if (session) {
+            navigate("/dashboard");
+          }
+        }
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
     
-    if (authenticated) {
-      navigate("/dashboard");
-    }
+    checkSession();
   }, [navigate]);
-  
-  const handleAuthSuccess = () => {
-    navigate("/dashboard");
-  };
   
   if (isLoading) {
     return (
@@ -50,7 +68,7 @@ const Index = () => {
             <p className="text-muted-foreground">Track, share, and discuss movies with friends</p>
           </div>
           
-          <AuthForm onSuccess={handleAuthSuccess} />
+          <AuthForm />
         </motion.div>
       </div>
       

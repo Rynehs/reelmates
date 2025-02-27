@@ -6,20 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 type AuthMode = "login" | "register";
 
-interface AuthFormProps {
-  onSuccess: () => void;
-}
-
-const AuthForm = ({ onSuccess }: AuthFormProps) => {
+const AuthForm = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,30 +35,44 @@ const AuthForm = ({ onSuccess }: AuthFormProps) => {
     setLoading(true);
     
     try {
-      // In a real app, we'd call an authentication service
-      // For now, let's just simulate a delay and success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful authentication
-      localStorage.setItem("authenticated", "true");
-      localStorage.setItem("user", JSON.stringify({
-        id: "1",
-        email,
-        name: mode === "register" ? name : "Demo User",
-        avatar_url: null,
-        created_at: new Date().toISOString()
-      }));
-      
-      toast({
-        title: mode === "login" ? "Logged in successfully" : "Account created successfully",
-        description: "Welcome to ReelMates!",
-      });
-      
-      onSuccess();
-    } catch (error) {
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Logged in successfully",
+          description: "Welcome to ReelMates!",
+        });
+        
+        navigate("/dashboard");
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name,
+            },
+          },
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Account created successfully",
+          description: "Welcome to ReelMates!",
+        });
+        
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
       toast({
         title: "Authentication failed",
-        description: "Please check your credentials and try again",
+        description: error.message || "Please check your credentials and try again",
         variant: "destructive",
       });
     } finally {
@@ -71,33 +84,21 @@ const AuthForm = ({ onSuccess }: AuthFormProps) => {
     setLoading(true);
     
     try {
-      // In a real app, we'd integrate with Google OAuth
-      // For now, let's just simulate a delay and success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful authentication
-      localStorage.setItem("authenticated", "true");
-      localStorage.setItem("user", JSON.stringify({
-        id: "1",
-        email: "demo@example.com",
-        name: "Demo User",
-        avatar_url: null,
-        created_at: new Date().toISOString()
-      }));
-      
-      toast({
-        title: "Logged in with Google",
-        description: "Welcome to ReelMates!",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`
+        }
       });
       
-      onSuccess();
-    } catch (error) {
+      if (error) throw error;
+      
+    } catch (error: any) {
       toast({
         title: "Google authentication failed",
-        description: "Please try again later",
+        description: error.message || "Please try again later",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
