@@ -7,6 +7,18 @@ import { fetchMovieDetails, fetchTVShowDetails } from "@/lib/tmdb";
 import { Movie, TVShow, UserMedia } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
+interface DatabaseUserMedia {
+  id: string;
+  user_id: string;
+  movie_id: number; // This is actually media_id
+  media_type?: 'movie' | 'tv';
+  status: string;
+  rating?: number;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 const Dashboard = () => {
   const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
   const [toWatchMovies, setToWatchMovies] = useState<Movie[]>([]);
@@ -23,7 +35,7 @@ const Dashboard = () => {
           return;
         }
         
-        const { data: userMedia, error } = await supabase
+        const { data: userMediaFromDB, error } = await supabase
           .from("user_movies")
           .select("*")
           .eq("user_id", session.user.id);
@@ -31,6 +43,18 @@ const Dashboard = () => {
         if (error) {
           throw error;
         }
+        
+        // Map database fields to UserMedia interface
+        const userMedia: UserMedia[] = (userMediaFromDB as DatabaseUserMedia[]).map(item => ({
+          id: item.id,
+          user_id: item.user_id,
+          media_id: item.movie_id, // Map movie_id to media_id
+          media_type: item.media_type || 'movie', // Default to movie if not specified
+          status: item.status as 'watched' | 'to_watch' | 'favorite',
+          rating: item.rating,
+          notes: item.notes,
+          created_at: item.created_at
+        }));
         
         const watchedData: UserMedia[] = userMedia.filter(item => item.status === "watched");
         const toWatchData: UserMedia[] = userMedia.filter(item => item.status === "to_watch");

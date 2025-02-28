@@ -59,7 +59,7 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
       
       const { error } = await supabase.from("user_movies").upsert({
         user_id: session.user.id,
-        movie_id: media.id,
+        movie_id: media.id, // Database field name is movie_id
         media_type: mediaType,
         status,
       });

@@ -8,7 +8,6 @@ import {
   fetchMovieWatchProviders,
   getImageUrl 
 } from "@/lib/tmdb";
-import { Movie } from "@/lib/types";
 import type { MovieDetails } from "@/lib/types";
 import { 
   ArrowLeft, 
@@ -88,7 +87,7 @@ const MovieDetails = () => {
       
       const { error } = await supabase.from("user_movies").upsert({
         user_id: session.user.id,
-        movie_id: movie.id,
+        movie_id: movie.id, // Database field is movie_id
         media_type: 'movie',
         status,
       });

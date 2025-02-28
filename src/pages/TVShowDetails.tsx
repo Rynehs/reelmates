@@ -87,7 +87,7 @@ const TVShowDetails = () => {
       
       const { error } = await supabase.from("user_movies").upsert({
         user_id: session.user.id,
-        movie_id: tvShow.id,
+        movie_id: tvShow.id, // This field in the database is used for both movies and TV shows
         media_type: 'tv',
         status,
       });
