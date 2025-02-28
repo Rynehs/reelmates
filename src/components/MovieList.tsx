@@ -88,7 +88,11 @@ export const MovieList = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {toWatchMovies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
+                <MovieCard 
+                  key={movie.id} 
+                  media={{...movie, media_type: 'movie'}} 
+                  status="to_watch"
+                />
               ))}
             </div>
           )}
@@ -110,7 +114,11 @@ export const MovieList = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {watchedMovies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
+                <MovieCard 
+                  key={movie.id} 
+                  media={{...movie, media_type: 'movie'}}
+                  status="watched"
+                />
               ))}
             </div>
           )}
@@ -132,7 +140,11 @@ export const MovieList = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {favoriteMovies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
+                <MovieCard 
+                  key={movie.id} 
+                  media={{...movie, media_type: 'movie'}}
+                  status="favorite"
+                />
               ))}
             </div>
           )}

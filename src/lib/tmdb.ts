@@ -227,14 +227,20 @@ export const discoverMovies = async (params: {
   sort_by?: string,
   page?: number 
 }): Promise<MediaResponse> => {
-  const queryParams = new URLSearchParams({
-    api_key: API_KEY,
-    language: 'en-US',
-    include_adult: 'false',
-    include_video: 'false',
-    page: params.page?.toString() || '1',
-    ...params
-  });
+  // Fix: Create a proper URLSearchParams object
+  const queryParams = new URLSearchParams();
+  
+  // Add the API key and default params
+  queryParams.append('api_key', API_KEY);
+  queryParams.append('language', 'en-US');
+  queryParams.append('include_adult', 'false');
+  queryParams.append('include_video', 'false');
+  queryParams.append('page', params.page?.toString() || '1');
+  
+  // Add the optional params
+  if (params.with_genres) queryParams.append('with_genres', params.with_genres);
+  if (params.year) queryParams.append('year', params.year);
+  if (params.sort_by) queryParams.append('sort_by', params.sort_by);
   
   const response = await fetch(
     `${BASE_URL}/discover/movie?${queryParams.toString()}`
@@ -260,14 +266,20 @@ export const discoverTVShows = async (params: {
   sort_by?: string,
   page?: number 
 }): Promise<MediaResponse> => {
-  const queryParams = new URLSearchParams({
-    api_key: API_KEY,
-    language: 'en-US',
-    include_adult: 'false',
-    include_null_first_air_dates: 'false',
-    page: params.page?.toString() || '1',
-    ...params
-  });
+  // Fix: Create a proper URLSearchParams object
+  const queryParams = new URLSearchParams();
+  
+  // Add the API key and default params
+  queryParams.append('api_key', API_KEY);
+  queryParams.append('language', 'en-US');
+  queryParams.append('include_adult', 'false');
+  queryParams.append('include_null_first_air_dates', 'false');
+  queryParams.append('page', params.page?.toString() || '1');
+  
+  // Add the optional params
+  if (params.with_genres) queryParams.append('with_genres', params.with_genres);
+  if (params.first_air_date_year) queryParams.append('first_air_date_year', params.first_air_date_year);
+  if (params.sort_by) queryParams.append('sort_by', params.sort_by);
   
   const response = await fetch(
     `${BASE_URL}/discover/tv?${queryParams.toString()}`

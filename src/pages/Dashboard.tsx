@@ -3,17 +3,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
-import { fetchMovieDetails } from "@/lib/tmdb";
-import { Movie } from "@/lib/types";
+import { fetchMovieDetails, fetchTVShowDetails } from "@/lib/tmdb";
+import { Movie, TVShow, UserMedia } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-
-interface UserMovie {
-  id: string;
-  movie_id: number;
-  status: string;
-  rating: number | null;
-  user_id: string;
-}
 
 const Dashboard = () => {
   const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
@@ -31,7 +23,7 @@ const Dashboard = () => {
           return;
         }
         
-        const { data: userMovies, error } = await supabase
+        const { data: userMedia, error } = await supabase
           .from("user_movies")
           .select("*")
           .eq("user_id", session.user.id);
@@ -40,20 +32,96 @@ const Dashboard = () => {
           throw error;
         }
         
-        const watchedData: UserMovie[] = userMovies.filter(movie => movie.status === "watched");
-        const toWatchData: UserMovie[] = userMovies.filter(movie => movie.status === "to_watch");
-        const favoriteData: UserMovie[] = userMovies.filter(movie => movie.status === "favorite");
+        const watchedData: UserMedia[] = userMedia.filter(item => item.status === "watched");
+        const toWatchData: UserMedia[] = userMedia.filter(item => item.status === "to_watch");
+        const favoriteData: UserMedia[] = userMedia.filter(item => item.status === "favorite");
         
-        // Fetch full movie details for each movie ID
-        const [watched, toWatch, favorites] = await Promise.all([
-          Promise.all(watchedData.map(movie => fetchMovieDetails(movie.movie_id))),
-          Promise.all(toWatchData.map(movie => fetchMovieDetails(movie.movie_id))),
-          Promise.all(favoriteData.map(movie => fetchMovieDetails(movie.movie_id)))
-        ]);
+        // Fetch full details for each media item
+        const watched = await Promise.all(
+          watchedData.map(async (item) => {
+            try {
+              if (item.media_type === 'movie') {
+                return await fetchMovieDetails(item.media_id);
+              } else {
+                // Convert TV show to Movie format for existing component
+                const tvShow = await fetchTVShowDetails(item.media_id);
+                return {
+                  id: tvShow.id,
+                  title: tvShow.name,
+                  poster_path: tvShow.poster_path,
+                  backdrop_path: tvShow.backdrop_path,
+                  release_date: tvShow.first_air_date,
+                  vote_average: tvShow.vote_average,
+                  overview: tvShow.overview,
+                  genre_ids: tvShow.genre_ids,
+                  media_type: 'movie' // We'll convert this within MovieList
+                } as Movie;
+              }
+            } catch (error) {
+              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
+              return null;
+            }
+          })
+        );
         
-        setWatchedMovies(watched);
-        setToWatchMovies(toWatch);
-        setFavoriteMovies(favorites);
+        const toWatch = await Promise.all(
+          toWatchData.map(async (item) => {
+            try {
+              if (item.media_type === 'movie') {
+                return await fetchMovieDetails(item.media_id);
+              } else {
+                // Convert TV show to Movie format for existing component
+                const tvShow = await fetchTVShowDetails(item.media_id);
+                return {
+                  id: tvShow.id,
+                  title: tvShow.name,
+                  poster_path: tvShow.poster_path,
+                  backdrop_path: tvShow.backdrop_path,
+                  release_date: tvShow.first_air_date,
+                  vote_average: tvShow.vote_average,
+                  overview: tvShow.overview,
+                  genre_ids: tvShow.genre_ids,
+                  media_type: 'movie' // We'll convert this within MovieList
+                } as Movie;
+              }
+            } catch (error) {
+              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
+              return null;
+            }
+          })
+        );
+        
+        const favorites = await Promise.all(
+          favoriteData.map(async (item) => {
+            try {
+              if (item.media_type === 'movie') {
+                return await fetchMovieDetails(item.media_id);
+              } else {
+                // Convert TV show to Movie format for existing component
+                const tvShow = await fetchTVShowDetails(item.media_id);
+                return {
+                  id: tvShow.id,
+                  title: tvShow.name,
+                  poster_path: tvShow.poster_path,
+                  backdrop_path: tvShow.backdrop_path,
+                  release_date: tvShow.first_air_date,
+                  vote_average: tvShow.vote_average,
+                  overview: tvShow.overview,
+                  genre_ids: tvShow.genre_ids,
+                  media_type: 'movie' // We'll convert this within MovieList
+                } as Movie;
+              }
+            } catch (error) {
+              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
+              return null;
+            }
+          })
+        );
+        
+        // Filter out any null results from failed fetches
+        setWatchedMovies(watched.filter((item): item is Movie => item !== null));
+        setToWatchMovies(toWatch.filter((item): item is Movie => item !== null));
+        setFavoriteMovies(favorites.filter((item): item is Movie => item !== null));
       } catch (error: any) {
         toast({
           title: "Failed to fetch movies",

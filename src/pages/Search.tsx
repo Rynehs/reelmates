@@ -161,7 +161,8 @@ const Search = () => {
     }
   };
   
-  const currentGenres = mediaType === "tv" ? tvGenres : movieType === "multi" ? [...movieGenres, ...tvGenres] : movieGenres;
+  // Fix: "movieType" is not defined, changed to "mediaType"
+  const currentGenres = mediaType === "tv" ? tvGenres : mediaType === "multi" ? [...movieGenres, ...tvGenres] : movieGenres;
   
   return (
     <div className="min-h-screen bg-background">

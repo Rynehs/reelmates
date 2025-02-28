@@ -31,14 +31,19 @@ export interface TVShow {
   media_type?: 'tv';
 }
 
-export interface MediaItem extends Partial<Movie>, Partial<TVShow> {
+// Instead of extending partial Movie and TV, we'll define it explicitly
+export interface MediaItem {
   id: number;
-  media_type: 'movie' | 'tv';
+  title?: string;  // for movies
+  name?: string;   // for tv shows
   poster_path: string | null;
   backdrop_path: string | null;
+  release_date?: string; // for movies
+  first_air_date?: string; // for tv shows
   vote_average: number;
   overview: string;
   genre_ids: number[];
+  media_type: 'movie' | 'tv';
 }
 
 export interface MovieDetails extends Movie {
