@@ -4,19 +4,18 @@ import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { 
-  fetchMovieDetails, 
-  fetchMovieWatchProviders,
+  fetchTVShowDetails, 
+  fetchTVShowWatchProviders,
   getImageUrl 
 } from "@/lib/tmdb";
-import { Movie } from "@/lib/types";
-import type { MovieDetails } from "@/lib/types";
+import type { TVShowDetails } from "@/lib/types";
 import { 
   ArrowLeft, 
-  Clock, 
-  Star, 
   Calendar, 
+  Star, 
   Heart, 
   CheckCircle, 
+  Clock, 
   Play, 
   ExternalLink, 
   Loader2 
@@ -27,9 +26,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import MovieCard from "@/components/MovieCard";
 
-const MovieDetails = () => {
+const TVShowDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<MovieDetails | null>(null);
+  const [tvShow, setTVShow] = useState<TVShowDetails | null>(null);
   const [watchProviders, setWatchProviders] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingToList, setIsAddingToList] = useState(false);
@@ -37,20 +36,20 @@ const MovieDetails = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    const fetchMovie = async () => {
+    const fetchTVShow = async () => {
       if (!id) return;
       
       try {
         setIsLoading(true);
         setError(null);
         
-        // Fetch movie details and watch providers in parallel
-        const [movieData, providersData] = await Promise.all([
-          fetchMovieDetails(parseInt(id)),
-          fetchMovieWatchProviders(parseInt(id))
+        // Fetch TV show details and watch providers in parallel
+        const [tvShowData, providersData] = await Promise.all([
+          fetchTVShowDetails(parseInt(id)),
+          fetchTVShowWatchProviders(parseInt(id))
         ]);
         
-        setMovie(movieData);
+        setTVShow(tvShowData);
         
         // Extract US providers or use first available country
         const providerResults = providersData.results || {};
@@ -59,18 +58,18 @@ const MovieDetails = () => {
         
         setWatchProviders(usProviders || (firstCountry ? providerResults[firstCountry] : null));
       } catch (err: any) {
-        console.error("Error fetching movie:", err);
-        setError(err.message || "Failed to load movie details");
+        console.error("Error fetching TV show:", err);
+        setError(err.message || "Failed to load TV show details");
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchMovie();
+    fetchTVShow();
   }, [id]);
   
   const addToList = async (status: "to_watch" | "watched" | "favorite") => {
-    if (!movie) return;
+    if (!tvShow) return;
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -78,7 +77,7 @@ const MovieDetails = () => {
       if (!session?.user) {
         toast({
           title: "Authentication required",
-          description: "Please log in to add movies to your list",
+          description: "Please log in to add TV shows to your list",
           variant: "destructive",
         });
         return;
@@ -88,20 +87,20 @@ const MovieDetails = () => {
       
       const { error } = await supabase.from("user_movies").upsert({
         user_id: session.user.id,
-        movie_id: movie.id,
-        media_type: 'movie',
+        movie_id: tvShow.id,
+        media_type: 'tv',
         status,
       });
       
       if (error) throw error;
       
       toast({
-        title: "Movie added",
-        description: `"${movie.title}" has been added to your ${status.replace("_", " ")} list`,
+        title: "TV Show added",
+        description: `"${tvShow.name}" has been added to your ${status.replace("_", " ")} list`,
       });
     } catch (error: any) {
       toast({
-        title: "Failed to add movie",
+        title: "Failed to add TV show",
         description: error.message || "Please try again later",
         variant: "destructive",
       });
@@ -126,14 +125,14 @@ const MovieDetails = () => {
     );
   }
   
-  if (error || !movie) {
+  if (error || !tvShow) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <h2 className="text-2xl font-bold mb-4">
-              {error || "Movie not found"}
+              {error || "TV show not found"}
             </h2>
             <Link to="/dashboard">
               <Button>
@@ -148,7 +147,7 @@ const MovieDetails = () => {
   }
   
   // Find trailer
-  const trailer = movie.videos?.results.find(
+  const trailer = tvShow.videos?.results.find(
     (video) => video.type === "Trailer" && video.site === "YouTube"
   );
   
@@ -156,12 +155,12 @@ const MovieDetails = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main>
-        {movie.backdrop_path && (
+        {tvShow.backdrop_path && (
           <div className="relative h-[40vh] overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
             <img
-              src={getImageUrl(movie.backdrop_path, "original")}
-              alt={movie.title}
+              src={getImageUrl(tvShow.backdrop_path, "original")}
+              alt={tvShow.name}
               className="w-full h-full object-cover"
             />
           </div>
@@ -181,8 +180,8 @@ const MovieDetails = () => {
             <div className="md:col-span-1">
               <div className="rounded-lg overflow-hidden shadow-lg">
                 <img
-                  src={getImageUrl(movie.poster_path)}
-                  alt={movie.title}
+                  src={getImageUrl(tvShow.poster_path)}
+                  alt={tvShow.name}
                   className="w-full h-auto"
                 />
               </div>
@@ -337,34 +336,38 @@ const MovieDetails = () => {
             </div>
             
             <div className="md:col-span-2">
-              <h1 className="text-3xl font-bold mb-2">{movie.title}</h1>
+              <h1 className="text-3xl font-bold mb-2">{tvShow.name}</h1>
               
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="flex items-center text-sm">
                   <Star className="mr-1 h-4 w-4 text-yellow-500" />
-                  <span>{movie.vote_average.toFixed(1)}</span>
+                  <span>{tvShow.vote_average.toFixed(1)}</span>
                 </div>
                 
                 <div className="flex items-center text-sm">
                   <Calendar className="mr-1 h-4 w-4" />
                   <span>
-                    {new Date(movie.release_date).getFullYear()}
+                    {tvShow.first_air_date ? new Date(tvShow.first_air_date).getFullYear() : 'Unknown'}
                   </span>
                 </div>
                 
-                {/* Only display runtime if it exists */}
-                {movie.runtime && (
-                  <div className="flex items-center text-sm">
-                    <Clock className="mr-1 h-4 w-4" />
-                    <span>{movie.runtime} min</span>
-                  </div>
-                )}
+                <div className="flex items-center text-sm">
+                  <Badge variant="outline">
+                    {tvShow.number_of_seasons} {tvShow.number_of_seasons === 1 ? 'Season' : 'Seasons'}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center text-sm">
+                  <Badge variant="outline">
+                    {tvShow.number_of_episodes} Episodes
+                  </Badge>
+                </div>
               </div>
               
               {/* Only display genres if they exist */}
-              {movie.genres && movie.genres.length > 0 && (
+              {tvShow.genres && tvShow.genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
-                  {movie.genres.map((genre) => (
+                  {tvShow.genres.map((genre) => (
                     <span
                       key={genre.id}
                       className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-xs"
@@ -379,27 +382,27 @@ const MovieDetails = () => {
                 <TabsList>
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="cast">Cast</TabsTrigger>
-                  {movie.similar?.results.length ? (
+                  {tvShow.similar?.results.length ? (
                     <TabsTrigger value="similar">Similar</TabsTrigger>
                   ) : null}
-                  {movie.reviews?.results.length ? (
+                  {tvShow.reviews?.results.length ? (
                     <TabsTrigger value="reviews">Reviews</TabsTrigger>
                   ) : null}
                 </TabsList>
                 
                 <TabsContent value="overview" className="mt-4">
                   <div className="space-y-4">
-                    {movie.tagline && (
-                      <p className="text-lg italic text-muted-foreground">"{movie.tagline}"</p>
+                    {tvShow.tagline && (
+                      <p className="text-lg italic text-muted-foreground">"{tvShow.tagline}"</p>
                     )}
-                    <p className="text-muted-foreground">{movie.overview}</p>
+                    <p className="text-muted-foreground">{tvShow.overview}</p>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="cast" className="mt-4">
-                  {movie.credits?.cast && (
+                  {tvShow.credits?.cast && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {movie.credits.cast.slice(0, 8).map((actor) => (
+                      {tvShow.credits.cast.slice(0, 8).map((actor) => (
                         <div key={actor.id} className="text-center">
                           <div className="overflow-hidden rounded-full w-20 h-20 mx-auto mb-2">
                             {actor.profile_path ? (
@@ -423,12 +426,12 @@ const MovieDetails = () => {
                 </TabsContent>
                 
                 <TabsContent value="similar" className="mt-4">
-                  {movie.similar?.results && (
+                  {tvShow.similar?.results && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {movie.similar.results.slice(0, 6).map((similar) => (
+                      {tvShow.similar.results.slice(0, 6).map((similar) => (
                         <MovieCard 
                           key={similar.id} 
-                          media={{...similar, media_type: 'movie'}}
+                          media={{...similar, media_type: 'tv'}}
                           showActions={true}
                         />
                       ))}
@@ -437,9 +440,9 @@ const MovieDetails = () => {
                 </TabsContent>
                 
                 <TabsContent value="reviews" className="mt-4">
-                  {movie.reviews?.results && movie.reviews.results.length > 0 ? (
+                  {tvShow.reviews?.results && tvShow.reviews.results.length > 0 ? (
                     <div className="space-y-4">
-                      {movie.reviews.results.slice(0, 3).map((review) => (
+                      {tvShow.reviews.results.slice(0, 3).map((review) => (
                         <div key={review.id} className="border p-4 rounded-lg">
                           <div className="flex items-center mb-2">
                             <div className="font-medium">{review.author}</div>
@@ -468,4 +471,4 @@ const MovieDetails = () => {
   );
 };
 
-export default MovieDetails;
+export default TVShowDetails;

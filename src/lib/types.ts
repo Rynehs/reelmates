@@ -16,22 +16,147 @@ export interface Movie {
   vote_average: number;
   overview: string;
   genre_ids: number[];
+  media_type?: 'movie';
+}
+
+export interface TVShow {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  vote_average: number;
+  overview: string;
+  genre_ids: number[];
+  media_type?: 'tv';
+}
+
+export interface MediaItem extends Partial<Movie>, Partial<TVShow> {
+  id: number;
+  media_type: 'movie' | 'tv';
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average: number;
+  overview: string;
+  genre_ids: number[];
 }
 
 export interface MovieDetails extends Movie {
   runtime: number;
   genres: { id: number; name: string }[];
   tagline: string;
+  videos?: {
+    results: {
+      id: string;
+      key: string;
+      name: string;
+      site: string;
+      type: string;
+    }[];
+  };
+  watch_providers?: {
+    results: {
+      [countryCode: string]: {
+        link: string;
+        flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
+        rent?: { provider_id: number; provider_name: string; logo_path: string }[];
+        buy?: { provider_id: number; provider_name: string; logo_path: string }[];
+      };
+    };
+  };
+  credits?: {
+    cast: {
+      id: number;
+      name: string;
+      character: string;
+      profile_path: string | null;
+    }[];
+    crew: {
+      id: number;
+      name: string;
+      job: string;
+      profile_path: string | null;
+    }[];
+  };
+  similar?: {
+    results: Movie[];
+  };
+  reviews?: {
+    results: {
+      id: string;
+      author: string;
+      content: string;
+      created_at: string;
+    }[];
+  };
 }
 
-export interface UserMovie {
+export interface TVShowDetails extends TVShow {
+  episodes_runtime: number[];
+  genres: { id: number; name: string }[];
+  tagline: string;
+  number_of_seasons: number;
+  number_of_episodes: number;
+  videos?: {
+    results: {
+      id: string;
+      key: string;
+      name: string;
+      site: string;
+      type: string;
+    }[];
+  };
+  watch_providers?: {
+    results: {
+      [countryCode: string]: {
+        link: string;
+        flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
+        rent?: { provider_id: number; provider_name: string; logo_path: string }[];
+        buy?: { provider_id: number; provider_name: string; logo_path: string }[];
+      };
+    };
+  };
+  credits?: {
+    cast: {
+      id: number;
+      name: string;
+      character: string;
+      profile_path: string | null;
+    }[];
+    crew: {
+      id: number;
+      name: string;
+      job: string;
+      profile_path: string | null;
+    }[];
+  };
+  similar?: {
+    results: TVShow[];
+  };
+  reviews?: {
+    results: {
+      id: string;
+      author: string;
+      content: string;
+      created_at: string;
+    }[];
+  };
+}
+
+export interface UserMedia {
   id: string;
   user_id: string;
-  movie_id: number;
+  media_id: number;
+  media_type: 'movie' | 'tv';
   status: 'watched' | 'to_watch' | 'favorite';
   rating?: number;
   notes?: string;
   created_at: string;
+}
+
+export interface Genre {
+  id: number;
+  name: string;
 }
 
 export interface Room {
@@ -52,10 +177,11 @@ export interface RoomMember {
   user?: User;
 }
 
-export interface RoomMovie {
+export interface RoomMedia {
   id: string;
   room_id: string;
-  movie_id: number;
+  media_id: number;
+  media_type: 'movie' | 'tv';
   added_by: string;
   status: 'suggested' | 'approved' | 'watched';
   created_at: string;
@@ -73,7 +199,7 @@ export interface Message {
 
 export interface SearchResults {
   page: number;
-  results: Movie[];
+  results: (Movie | TVShow | MediaItem)[];
   total_results: number;
   total_pages: number;
 }
