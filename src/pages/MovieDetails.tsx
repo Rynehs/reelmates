@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { fetchMovieDetails } from "@/lib/tmdb";
 import { getImageUrl } from "@/lib/tmdb";
-import { Movie } from "@/lib/types";
+import { Movie, MovieDetails } from "@/lib/types";
 import { ArrowLeft, Clock, Star, Calendar } from "lucide-react";
 
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const [movie, setMovie] = useState<MovieDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +22,8 @@ const MovieDetails = () => {
         setIsLoading(true);
         setError(null);
         
-        const movieData = await fetchMovieDetails(parseInt(id));
+        // We'll treat the returned data as MovieDetails to access the extended properties
+        const movieData = await fetchMovieDetails(parseInt(id)) as unknown as MovieDetails;
         setMovie(movieData);
       } catch (err: any) {
         console.error("Error fetching movie:", err);
@@ -124,6 +125,7 @@ const MovieDetails = () => {
                   </span>
                 </div>
                 
+                {/* Only display runtime if it exists */}
                 {movie.runtime && (
                   <div className="flex items-center text-sm">
                     <Clock className="mr-1 h-4 w-4" />
@@ -132,7 +134,8 @@ const MovieDetails = () => {
                 )}
               </div>
               
-              {movie.genres && (
+              {/* Only display genres if they exist */}
+              {movie.genres && movie.genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
                   {movie.genres.map((genre) => (
                     <span

@@ -1,6 +1,6 @@
 
 // TMDB API client
-import { Movie, SearchResults } from "@/lib/types";
+import { Movie, MovieDetails, SearchResults } from "@/lib/types";
 
 const API_KEY = "22766f958212a9c2cf269d2e6b06a577";
 const BASE_URL = "https://api.themoviedb.org/3";
@@ -38,7 +38,7 @@ export const searchMovies = async (query: string): Promise<MovieResponse> => {
   return response.json();
 };
 
-export const fetchMovieDetails = async (id: number): Promise<Movie> => {
+export const fetchMovieDetails = async (id: number): Promise<MovieDetails> => {
   const response = await fetch(
     `${BASE_URL}/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar`
   );
