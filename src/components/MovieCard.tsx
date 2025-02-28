@@ -139,11 +139,11 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
       </Link>
       
       {showActions && (
-        <div className="p-3 pt-0 mt-auto flex justify-between gap-2">
+        <div className="p-3 pt-0 mt-auto grid grid-cols-3 gap-2">
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1 h-8" 
+            className="h-9 px-2 w-full" 
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -151,14 +151,14 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
             }}
             disabled={isAddingToList}
           >
-            {isAddingToList ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3 mr-1" />}
-            <span className="text-xs">Watch Later</span>
+            {isAddingToList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock className="h-3.5 w-3.5" />}
+            <span className="ml-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis">Later</span>
           </Button>
           
           <Button 
             variant="outline" 
             size="sm"
-            className="flex-1 h-8" 
+            className="h-9 px-2 w-full" 
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -166,14 +166,14 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
             }}
             disabled={isAddingToList}
           >
-            {isAddingToList ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-            <span className="text-xs">Watched</span>
+            {isAddingToList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            <span className="ml-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis">Watched</span>
           </Button>
           
           <Button 
             variant="outline" 
             size="sm"
-            className="flex-1 h-8" 
+            className="h-9 px-2 w-full" 
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -181,8 +181,8 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
             }}
             disabled={isAddingToList}
           >
-            {isAddingToList ? <Loader2 className="h-3 w-3 animate-spin" /> : <Heart className="h-3 w-3 mr-1" />}
-            <span className="text-xs">Favorite</span>
+            {isAddingToList ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Heart className="h-3.5 w-3.5" />}
+            <span className="ml-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis">Favorite</span>
           </Button>
         </div>
       )}
