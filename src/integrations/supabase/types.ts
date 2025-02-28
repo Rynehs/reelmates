@@ -96,6 +96,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          media_type: string | null
           movie_id: number
           notes: string | null
           rating: number | null
@@ -106,6 +107,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          media_type?: string | null
           movie_id: number
           notes?: string | null
           rating?: number | null
@@ -116,6 +118,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          media_type?: string | null
           movie_id?: number
           notes?: string | null
           rating?: number | null
