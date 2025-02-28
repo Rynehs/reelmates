@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { fetchMovieDetails } from "@/lib/tmdb";
 import { getImageUrl } from "@/lib/tmdb";
-import { Movie, MovieDetails } from "@/lib/types";
+import { Movie } from "@/lib/types";
+import type { MovieDetails } from "@/lib/types";
 import { ArrowLeft, Clock, Star, Calendar } from "lucide-react";
 
 const MovieDetails = () => {
@@ -23,7 +24,7 @@ const MovieDetails = () => {
         setError(null);
         
         // We'll treat the returned data as MovieDetails to access the extended properties
-        const movieData = await fetchMovieDetails(parseInt(id)) as unknown as MovieDetails;
+        const movieData = await fetchMovieDetails(parseInt(id));
         setMovie(movieData);
       } catch (err: any) {
         console.error("Error fetching movie:", err);
