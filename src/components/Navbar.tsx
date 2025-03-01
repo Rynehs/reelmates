@@ -11,7 +11,9 @@ import {
   Settings, 
   Moon,
   Sun,
-  Bell 
+  Bell,
+  Menu,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
@@ -23,10 +25,12 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export const Navbar = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -71,6 +75,14 @@ export const Navbar = () => {
       description: "Notifications preferences will be available soon",
     });
   };
+
+  const updateAvatar = () => {
+    navigate('/profile');
+    toast({
+      title: "Profile settings",
+      description: "Update your profile picture in the settings",
+    });
+  };
   
   return (
     <nav className="border-b">
@@ -81,6 +93,7 @@ export const Navbar = () => {
             ReelMates
           </NavLink>
           
+          {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             <NavLink
               to="/dashboard"
@@ -106,6 +119,41 @@ export const Navbar = () => {
               Rooms
             </NavLink>
           </div>
+        </div>
+        
+        {/* Mobile Menu Button */}
+        <div className="flex md:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[250px] sm:w-[300px]">
+              <div className="flex flex-col gap-4 py-4">
+                <NavLink 
+                  to="/dashboard" 
+                  className={({ isActive }) => 
+                    `flex items-center px-3 py-2 rounded-md ${isActive ? "bg-accent" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Home className="mr-2 h-5 w-5" />
+                  Dashboard
+                </NavLink>
+                <NavLink 
+                  to="/rooms" 
+                  className={({ isActive }) => 
+                    `flex items-center px-3 py-2 rounded-md ${isActive ? "bg-accent" : ""}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Users className="mr-2 h-5 w-5" />
+                  Rooms
+                </NavLink>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -143,9 +191,9 @@ export const Navbar = () => {
                 <Bell className="mr-2 h-4 w-4" />
                 Notifications
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <DropdownMenuItem onClick={updateAvatar}>
                 <Settings className="mr-2 h-4 w-4" />
-                Account Settings
+                Profile Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
