@@ -25,7 +25,6 @@ const Dashboard = () => {
   const [favoriteMovies, setFavoriteMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [authSubscription, setAuthSubscription] = useState<{ unsubscribe: () => void } | null>(null);
   const { toast } = useToast();
   
   // Function to force a refresh of the movie lists
@@ -35,19 +34,15 @@ const Dashboard = () => {
   
   useEffect(() => {
     // Subscribe to auth changes to handle multi-device login
-    const subscription = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         refreshMovies();
       }
     });
     
-    setAuthSubscription(subscription);
-    
+    // Return the cleanup function directly
     return () => {
-      // Cleanup the subscription on component unmount
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []);
   
