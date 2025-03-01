@@ -3,13 +3,32 @@ import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/UserAvatar";
-import { Film, Home, LogOut, Users } from "lucide-react";
+import { 
+  Film, 
+  Home, 
+  LogOut, 
+  Users, 
+  Settings, 
+  Moon,
+  Sun,
+  Bell 
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navbar = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   useEffect(() => {
     const fetchProfile = async () => {
@@ -34,6 +53,23 @@ export const Navbar = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('dark');
+    toast({
+      title: `Theme changed to ${newTheme}`,
+      description: `App is now in ${newTheme} mode`,
+    });
+  };
+  
+  const toggleNotifications = () => {
+    toast({
+      title: "Notifications settings",
+      description: "Notifications preferences will be available soon",
+    });
   };
   
   return (
@@ -73,16 +109,51 @@ export const Navbar = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <UserAvatar 
-            user={{ 
-              name: profile?.username || "User", 
-              avatar_url: profile?.avatar_url || null 
-            }} 
-          />
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Logout</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <UserAvatar 
+                  user={{ 
+                    name: profile?.username || "User", 
+                    avatar_url: profile?.avatar_url || null 
+                  }} 
+                />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="flex items-center justify-start gap-2 p-2">
+                <UserAvatar 
+                  user={{ 
+                    name: profile?.username || "User", 
+                    avatar_url: profile?.avatar_url || null 
+                  }}
+                  size="sm" 
+                />
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{profile?.username || "User"}</p>
+                  <p className="text-xs leading-none text-muted-foreground">Settings</p>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={toggleTheme}>
+                {theme === 'light' ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
+                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleNotifications}>
+                <Bell className="mr-2 h-4 w-4" />
+                Notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Account Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>

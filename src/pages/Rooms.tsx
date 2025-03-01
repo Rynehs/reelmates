@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Users, Copy, ArrowRightCircle, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Room {
   id: string;
@@ -36,6 +37,7 @@ const Rooms = () => {
   const [newRoomName, setNewRoomName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
     fetchRooms();
@@ -63,9 +65,12 @@ const Rooms = () => {
   
   const fetchRooms = async () => {
     try {
+      console.log("Fetching rooms...");
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
+        console.log("No user session found");
+        setIsLoading(false);
         return;
       }
       
@@ -75,13 +80,19 @@ const Rooms = () => {
         .select('room_id')
         .eq('user_id', session.user.id);
       
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("Error fetching member data:", memberError);
+        throw memberError;
+      }
       
       if (!memberData || memberData.length === 0) {
+        console.log("No room memberships found");
         setRooms([]);
         setIsLoading(false);
         return;
       }
+      
+      console.log("Found room memberships:", memberData.length);
       
       // Get the room IDs as an array of strings
       const roomIds = memberData.map(item => item.room_id);
@@ -98,10 +109,15 @@ const Rooms = () => {
         `)
         .in('id', roomIds);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching room data:", error);
+        throw error;
+      }
       
+      console.log("Fetched rooms:", data?.length || 0);
       setRooms(data || []);
     } catch (error: any) {
+      console.error("Error in fetchRooms:", error);
       toast({
         title: "Failed to fetch rooms",
         description: error.message || "Please try again later",
@@ -127,6 +143,7 @@ const Rooms = () => {
     setIsCreating(true);
     
     try {
+      console.log("Creating room:", newRoomName);
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
@@ -151,7 +168,12 @@ const Rooms = () => {
         .select()
         .single();
       
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error("Error creating room:", roomError);
+        throw roomError;
+      }
+      
+      console.log("Room created:", room);
       
       // Add creator as admin member
       const { error: memberError } = await supabase
@@ -162,7 +184,10 @@ const Rooms = () => {
           role: 'admin',
         });
       
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("Error adding room member:", memberError);
+        throw memberError;
+      }
       
       toast({
         title: "Room created",
@@ -173,6 +198,7 @@ const Rooms = () => {
       setShowCreateDialog(false);
       fetchRooms();
     } catch (error: any) {
+      console.error("Error in createRoom:", error);
       toast({
         title: "Failed to create room",
         description: error.message || "Please try again later",
@@ -400,7 +426,11 @@ const Rooms = () => {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button className="w-full" variant="outline">
+                    <Button 
+                      className="w-full" 
+                      variant="outline"
+                      onClick={() => navigate(`/room/${room.id}`)}
+                    >
                       <Users className="mr-2 h-4 w-4" />
                       View Room
                     </Button>
