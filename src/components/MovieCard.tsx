@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Movie, TVShow, MediaItem } from "@/lib/types";
@@ -20,9 +19,10 @@ interface MovieCardProps {
   status?: "watched" | "to_watch" | "favorite" | undefined;
   onClick?: () => void;
   showActions?: boolean;
+  onStatusChange?: () => void;
 }
 
-const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardProps) => {
+const MovieCard = ({ media, status, onClick, showActions = false, onStatusChange }: MovieCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isAddingToList, setIsAddingToList] = useState(false);
   const { toast } = useToast();
@@ -42,7 +42,7 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
     }
   };
 
-  const addToList = async (status: "to_watch" | "watched" | "favorite") => {
+  const addToList = async (newStatus: "to_watch" | "watched" | "favorite") => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -57,22 +57,68 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
       
       setIsAddingToList(true);
       
-      const { error } = await supabase.from("user_movies").upsert({
-        user_id: session.user.id,
-        movie_id: media.id, // Database field name is movie_id
-        media_type: mediaType,
-        status,
-      });
-      
-      if (error) throw error;
+      // If current status is favorite and new status is watched, we want to keep it as favorite
+      // but update watched status separately
+      if (status === "favorite" && newStatus === "watched") {
+        // Just add a new entry for watched status
+        const { error } = await supabase.from("user_movies").insert({
+          user_id: session.user.id,
+          movie_id: media.id,
+          media_type: mediaType,
+          status: newStatus,
+        });
+        
+        if (error) throw error;
+      }
+      // If movie is currently to_watch and being marked as watched, remove from to_watch
+      else if (status === "to_watch" && newStatus === "watched") {
+        // First, delete the to_watch entry
+        const { error: deleteError } = await supabase
+          .from("user_movies")
+          .delete()
+          .eq("user_id", session.user.id)
+          .eq("movie_id", media.id)
+          .eq("media_type", mediaType)
+          .eq("status", "to_watch");
+        
+        if (deleteError) throw deleteError;
+        
+        // Then, add watched entry
+        const { error } = await supabase.from("user_movies").insert({
+          user_id: session.user.id,
+          movie_id: media.id,
+          media_type: mediaType,
+          status: newStatus,
+        });
+        
+        if (error) throw error;
+      }
+      // Standard case: upsert the new status
+      else {
+        const { error } = await supabase.from("user_movies").upsert({
+          user_id: session.user.id,
+          movie_id: media.id,
+          media_type: mediaType,
+          status: newStatus,
+        });
+        
+        if (error) throw error;
+      }
       
       toast({
-        title: `${mediaType === 'movie' ? 'Movie' : 'TV Show'} added`,
-        description: `"${title}" has been added to your ${status.replace("_", " ")} list`,
+        title: `${mediaType === 'movie' ? 'Movie' : 'TV Show'} updated`,
+        description: `"${title}" has been ${newStatus === "to_watch" ? "added to your watch later list" : 
+                       newStatus === "watched" ? "marked as watched" : 
+                       "added to your favorites"}`,
       });
+      
+      // Trigger parent component to refresh data
+      if (onStatusChange) {
+        onStatusChange();
+      }
     } catch (error: any) {
       toast({
-        title: `Failed to add ${mediaType === 'movie' ? 'movie' : 'TV show'}`,
+        title: `Failed to update ${mediaType === 'movie' ? 'movie' : 'TV show'}`,
         description: error.message || "Please try again later",
         variant: "destructive",
       });

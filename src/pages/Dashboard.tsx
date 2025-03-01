@@ -24,7 +24,32 @@ const Dashboard = () => {
   const [toWatchMovies, setToWatchMovies] = useState<Movie[]>([]);
   const [favoriteMovies, setFavoriteMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [authSubscription, setAuthSubscription] = useState<{ unsubscribe: () => void } | null>(null);
   const { toast } = useToast();
+  
+  // Function to force a refresh of the movie lists
+  const refreshMovies = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+  
+  useEffect(() => {
+    // Subscribe to auth changes to handle multi-device login
+    const subscription = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        refreshMovies();
+      }
+    });
+    
+    setAuthSubscription(subscription);
+    
+    return () => {
+      // Cleanup the subscription on component unmount
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
+  }, []);
   
   useEffect(() => {
     const fetchUserMovies = async () => {
@@ -32,6 +57,10 @@ const Dashboard = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session?.user) {
+          setWatchedMovies([]);
+          setToWatchMovies([]);
+          setFavoriteMovies([]);
+          setIsLoading(false);
           return;
         }
         
@@ -78,8 +107,8 @@ const Dashboard = () => {
                   vote_average: tvShow.vote_average,
                   overview: tvShow.overview,
                   genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
+                  media_type: 'tv' // Keep the correct media type
+                } as unknown as Movie;
               }
             } catch (error) {
               console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
@@ -105,8 +134,8 @@ const Dashboard = () => {
                   vote_average: tvShow.vote_average,
                   overview: tvShow.overview,
                   genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
+                  media_type: 'tv' // Keep the correct media type
+                } as unknown as Movie;
               }
             } catch (error) {
               console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
@@ -132,8 +161,8 @@ const Dashboard = () => {
                   vote_average: tvShow.vote_average,
                   overview: tvShow.overview,
                   genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
+                  media_type: 'tv' // Keep the correct media type
+                } as unknown as Movie;
               }
             } catch (error) {
               console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
@@ -158,7 +187,7 @@ const Dashboard = () => {
     };
     
     fetchUserMovies();
-  }, [toast]);
+  }, [toast, refreshTrigger]); // Add refreshTrigger to dependencies to force refresh
   
   return (
     <div className="min-h-screen bg-background">
@@ -169,6 +198,7 @@ const Dashboard = () => {
           toWatchMovies={toWatchMovies}
           favoriteMovies={favoriteMovies}
           isLoading={isLoading}
+          onStatusChange={refreshMovies}
         />
       </main>
     </div>

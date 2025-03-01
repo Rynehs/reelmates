@@ -35,7 +35,26 @@ const Rooms = () => {
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [roomCode, setRoomCode] = useState("");
+  const [authSubscription, setAuthSubscription] = useState<{ unsubscribe: () => void } | null>(null);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    // Subscribe to auth changes to handle multi-device login
+    const subscription = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchRooms();
+      }
+    });
+    
+    setAuthSubscription(subscription);
+    
+    return () => {
+      // Cleanup the subscription on component unmount
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
+  }, []);
   
   useEffect(() => {
     fetchRooms();
@@ -66,6 +85,8 @@ const Rooms = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
+        setRooms([]);
+        setIsLoading(false);
         return;
       }
       
@@ -102,6 +123,7 @@ const Rooms = () => {
       
       setRooms(data || []);
     } catch (error: any) {
+      console.error("Failed to fetch rooms:", error);
       toast({
         title: "Failed to fetch rooms",
         description: error.message || "Please try again later",
