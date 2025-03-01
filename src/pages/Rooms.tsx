@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -39,28 +38,10 @@ const Rooms = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
- useEffect(() => {
-  const channel = supabase
-    .channel('room-changes')
-    .on(
-      'postgres_changes',
-      { 
-        event: 'INSERT', // Only trigger on new room memberships
-        schema: 'public',
-        table: 'room_members'
-      },
-      () => {
-        fetchRooms();
-      }
-    )
-    .subscribe();
+  useEffect(() => {
+    fetchRooms();
+  }, []);
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
-
-  
   const fetchRooms = async () => {
     try {
       console.log("Fetching rooms...");
@@ -72,7 +53,6 @@ const Rooms = () => {
         return;
       }
       
-      // First, get the room IDs the user is a member of
       const { data: memberData, error: memberError } = await supabase
         .from('room_members')
         .select('room_id')
@@ -92,10 +72,8 @@ const Rooms = () => {
       
       console.log("Found room memberships:", memberData.length);
       
-      // Get the room IDs as an array of strings
       const roomIds = memberData.map(item => item.room_id);
       
-      // Then fetch the full room data for those IDs
       const { data, error } = await supabase
         .from('rooms')
         .select(`
@@ -155,7 +133,6 @@ const Rooms = () => {
       
       const roomCode = generateRoomCode();
       
-      // Create the room
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .insert({
@@ -173,7 +150,6 @@ const Rooms = () => {
       
       console.log("Room created:", room);
       
-      // Add creator as admin member
       const { error: memberError } = await supabase
         .from('room_members')
         .insert({
@@ -233,7 +209,6 @@ const Rooms = () => {
         return;
       }
       
-      // Find the room
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select('id, name')
@@ -249,7 +224,6 @@ const Rooms = () => {
         return;
       }
       
-      // Check if already a member
       const { data: existingMembership, error: membershipError } = await supabase
         .from('room_members')
         .select('id')
@@ -266,7 +240,6 @@ const Rooms = () => {
         return;
       }
       
-      // Add user as member
       const { error: joinError } = await supabase
         .from('room_members')
         .insert({
