@@ -34,7 +34,7 @@ const Dashboard = () => {
   
   useEffect(() => {
     // Subscribe to auth changes to handle multi-device login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const subscription = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         refreshMovies();
       }
@@ -42,7 +42,7 @@ const Dashboard = () => {
     
     // Return the cleanup function directly
     return () => {
-      subscription.unsubscribe();
+      subscription.data.subscription.unsubscribe();
     };
   }, []);
   

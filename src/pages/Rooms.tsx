@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ const Rooms = () => {
   
   useEffect(() => {
     // Subscribe to auth changes to handle multi-device login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const subscription = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchRooms();
       }
@@ -46,7 +47,7 @@ const Rooms = () => {
     
     // Return the cleanup function directly
     return () => {
-      subscription.unsubscribe();
+      subscription.data.subscription.unsubscribe();
     };
   }, []);
   
