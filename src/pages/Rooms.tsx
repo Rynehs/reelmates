@@ -39,29 +39,27 @@ const Rooms = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  useEffect(() => {
-    fetchRooms();
-    
-    // Subscribe to real-time updates for rooms
-    const channel = supabase
-      .channel('room-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'room_members' 
-        },
-        () => {
-          fetchRooms();
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+ useEffect(() => {
+  const channel = supabase
+    .channel('room-changes')
+    .on(
+      'postgres_changes',
+      { 
+        event: 'INSERT', // Only trigger on new room memberships
+        schema: 'public',
+        table: 'room_members'
+      },
+      () => {
+        fetchRooms();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+
   
   const fetchRooms = async () => {
     try {
