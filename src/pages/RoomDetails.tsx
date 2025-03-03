@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserAvatar } from "@/components/UserAvatar";
+import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, Film, MessageSquare, PlusCircle, Share2 } from "lucide-react";
@@ -51,7 +51,13 @@ const RoomDetails = () => {
           return;
         }
 
-        setRoom(roomData as Room);
+        // Fix for the 'members' property required by Room type
+        const roomWithMembers = {
+          ...roomData,
+          members: [] // Initialize with empty array to satisfy the Room type
+        } as Room;
+        
+        setRoom(roomWithMembers);
 
         // Fetch room members with user details
         const { data: membersData, error: membersError } = await supabase
@@ -78,8 +84,9 @@ const RoomDetails = () => {
         // Transform the data to match the expected types
         const transformedMembers = membersData.map(member => ({
           ...member,
+          role: member.role as "admin" | "member", // Cast the role to the expected type
           user: member.profiles as unknown as User
-        }));
+        })) as RoomMember[];
 
         setMembers(transformedMembers);
 
