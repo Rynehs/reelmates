@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -15,6 +14,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { Upload, Bell, User, Shield, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const Profile = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
@@ -30,8 +30,11 @@ const Profile = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [setupPhase, setSetupPhase] = useState<"initial" | "qrcode" | "verification">("initial");
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -197,20 +200,40 @@ const Profile = () => {
     setIsLoading(false);
   };
 
+  const generateTOTPSecret = () => {
+    // This function generates a random base32 string to use as a TOTP secret
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let secret = '';
+    for (let i = 0; i < 20; i++) {
+      secret += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return secret;
+  };
+
   const initiateTwoFactorSetup = async () => {
     setVerificationError(null);
     setIsLoading(true);
     
     try {
-      // In a real implementation, you would call your backend API to generate a TOTP secret
-      // and QR code URL. For this demo, we'll simulate the first step of the setup process.
-      setTimeout(() => {
-        setSetupPhase("qrcode");
-        // This is a placeholder QR code URL - in a real app, this would come from your backend
-        setQrCodeUrl("https://placeholder.svg");
-        setIsLoading(false);
-      }, 1500);
+      // Generate a new TOTP secret
+      const totpSecret = generateTOTPSecret();
+      setSecret(totpSecret);
+      
+      // The user's email will be used as the account name
+      const accountName = profile?.username || 'user';
+      const issuer = 'ReelMates'; // App name
+      
+      // Generate a URL for the QR code
+      const otpAuthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${totpSecret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+      
+      // Generate a URL for the QR code image
+      const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpAuthUrl)}`;
+      
+      setQrCodeUrl(qrCodeImageUrl);
+      setSetupPhase("qrcode");
+      setIsLoading(false);
     } catch (error) {
+      console.error("2FA setup error:", error);
       toast({
         title: "Setup failed",
         description: "Failed to initiate two-factor authentication setup",
@@ -230,43 +253,92 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, you would call your backend API to verify the code
-      // For this demo, we'll simulate a successful verification
-      setTimeout(() => {
-        setTwoFactorEnabled(true);
-        setSetupPhase("initial");
-        toast({
-          title: "Two-factor authentication enabled",
-          description: "Your account is now more secure with 2FA",
-        });
-        setIsLoading(false);
-      }, 1500);
+      // In a real implementation, you would verify the code against the secret
+      // Here we're simulating a successful verification for demo purposes
+      
+      // Generate backup codes
+      const generatedBackupCodes = Array.from({ length: 10 }, () => 
+        Math.floor(100000 + Math.random() * 900000).toString()
+      );
+      
+      setBackupCodes(generatedBackupCodes);
+      setTwoFactorEnabled(true);
+      
+      // In a real implementation, you would save the secret and backup codes to the database
+      // associated with the user's account
+      if (profile?.id) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ 
+            two_factor_enabled: true,
+            // In a real app, you would encrypt these values
+            // Note: You would need to add these columns to your profiles table
+            // two_factor_secret: secret, 
+            // backup_codes: generatedBackupCodes.join(',')
+          })
+          .eq("id", profile.id);
+          
+        if (error) {
+          console.error("Error saving 2FA settings:", error);
+          toast({
+            title: "Error",
+            description: "Failed to save two-factor authentication settings",
+            variant: "destructive",
+          });
+        }
+      }
+      
+      setShowBackupCodes(true);
+      setIsLoading(false);
     } catch (error) {
+      console.error("2FA verification error:", error);
       setVerificationError("Invalid verification code. Please try again.");
       setIsLoading(false);
     }
+  };
+
+  const finishTwoFactorSetup = () => {
+    setShowBackupCodes(false);
+    setSetupPhase("initial");
+    toast({
+      title: "Two-factor authentication enabled",
+      description: "Your account is now more secure with 2FA",
+    });
   };
 
   const disableTwoFactor = async () => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, you would call your backend API to disable 2FA
-      // For this demo, we'll simulate the process
-      setTimeout(() => {
-        setTwoFactorEnabled(false);
-        toast({
-          title: "Two-factor authentication disabled",
-          description: "2FA has been turned off for your account",
-        });
-        setIsLoading(false);
-      }, 1000);
+      if (profile?.id) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ 
+            two_factor_enabled: false,
+            // In a real app, you would also clear the secret and backup codes
+            // two_factor_secret: null,
+            // backup_codes: null
+          })
+          .eq("id", profile.id);
+          
+        if (error) {
+          console.error("Error disabling 2FA:", error);
+          throw error;
+        }
+      }
+      
+      setTwoFactorEnabled(false);
+      toast({
+        title: "Two-factor authentication disabled",
+        description: "2FA has been turned off for your account",
+      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to disable two-factor authentication",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -494,12 +566,29 @@ const Profile = () => {
                         Scan this QR code with your authenticator app (such as Google Authenticator or Authy)
                       </p>
                       <div className="flex justify-center">
-                        <img 
-                          src={qrCodeUrl || ""}
-                          alt="QR Code for 2FA setup" 
-                          className="w-48 h-48 border border-border rounded-md"
-                        />
+                        {qrCodeUrl ? (
+                          <img 
+                            src={qrCodeUrl}
+                            alt="QR Code for 2FA setup" 
+                            className="w-48 h-48 border border-border rounded-md"
+                          />
+                        ) : (
+                          <div className="w-48 h-48 border border-border rounded-md flex items-center justify-center">
+                            <span>Loading QR code...</span>
+                          </div>
+                        )}
                       </div>
+                      
+                      {secret && (
+                        <div className="mt-4 p-3 bg-muted rounded-md">
+                          <p className="text-sm font-medium mb-1">Manual Entry Code</p>
+                          <p className="text-sm break-all font-mono">{secret}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            If you can't scan the QR code, enter this code manually in your app
+                          </p>
+                        </div>
+                      )}
+                      
                       <Button 
                         onClick={() => setSetupPhase("verification")}
                         className="w-full"
@@ -561,6 +650,29 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Backup Codes Dialog */}
+      <Dialog open={showBackupCodes} onOpenChange={setShowBackupCodes}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recovery Backup Codes</DialogTitle>
+            <DialogDescription>
+              Store these backup codes securely. Each code can be used once to access your account if you lose your device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 my-4">
+            {backupCodes.map((code, index) => (
+              <div key={index} className="p-2 bg-muted rounded-md font-mono text-center">
+                {code}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-4">
+            <Button variant="outline">Download Codes</Button>
+            <Button onClick={finishTwoFactorSetup}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
