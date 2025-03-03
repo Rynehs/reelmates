@@ -74,6 +74,8 @@ const AddMovieDialog = ({ roomId, isOpen, onClose, onMovieAdded }: AddMovieDialo
         media_type: media.media_type,
         added_by: session.user.id,
         status: 'suggested', // Default status
+        title: getMediaTitle(media),
+        poster_path: media.poster_path
       });
       
       if (error) {

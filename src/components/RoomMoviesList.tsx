@@ -1,13 +1,13 @@
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Film, ThumbsUp, ThumbsDown, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { RoomMedia } from "@/lib/types";
-import { getImageUrl } from "@/lib/tmdb";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { getImageUrl, getMediaById } from "@/lib/tmdb";
+import { Loader2, ThumbsUp, Eye, Trash2, Film } from "lucide-react";
+import { RoomMedia, MediaItem } from "@/lib/types";
+import UserAvatar from "@/components/UserAvatar";
 
 interface RoomMoviesListProps {
   roomId: string;
@@ -16,170 +16,194 @@ interface RoomMoviesListProps {
 }
 
 const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => {
-  const [movies, setMovies] = useState<RoomMedia[]>([]);
+  const [media, setMedia] = useState<RoomMedia[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingMediaIds, setLoadingMediaIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-  
+
   useEffect(() => {
-    const fetchRoomMovies = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const { data, error } = await supabase
-          .from("room_media")
-          .select(`
-            *,
-            user:added_by (
-              id,
-              username,
-              avatar_url
-            )
-          `)
-          .eq("room_id", roomId)
-          .order("created_at", { ascending: false });
-          
-        if (error) {
-          throw error;
-        }
-        
-        // Fetch media details from TMDB
-        if (data && data.length > 0) {
-          // Transform the data to match RoomMedia type
-          const roomMedia = data.map(item => ({
-            ...item,
-            user: item.user
-          })) as RoomMedia[];
-          
-          setMovies(roomMedia);
-        } else {
-          setMovies([]);
-        }
-      } catch (err) {
-        console.error("Error fetching room movies:", err);
-        setError("Failed to load room media. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (roomId) {
-      fetchRoomMovies();
-    }
+    fetchRoomMedia();
   }, [roomId]);
 
-  const handleStatusChange = async (media: RoomMedia, newStatus: 'suggested' | 'approved' | 'watched') => {
+  const fetchRoomMedia = async () => {
     try {
-      const { error } = await supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from("room_media")
-        .update({ status: newStatus })
-        .eq("id", media.id);
-        
+        .select(`
+          *,
+          profiles:added_by (
+            id,
+            username,
+            avatar_url
+          )
+        `)
+        .eq("room_id", roomId)
+        .order("created_at", { ascending: false });
+
       if (error) {
         throw error;
       }
-      
-      // Update the local state
-      setMovies(prevMovies => 
-        prevMovies.map(m => m.id === media.id ? { ...m, status: newStatus } : m)
+
+      // For each media item, fetch the title and poster path if not already present
+      const enhancedMedia = await Promise.all(
+        data.map(async (item: any) => {
+          if (!item.title || !item.poster_path) {
+            try {
+              const mediaDetails = await getMediaById(item.media_id, item.media_type);
+              return {
+                ...item,
+                title: item.media_type === 'movie' ? mediaDetails.title : mediaDetails.name,
+                poster_path: mediaDetails.poster_path
+              };
+            } catch (e) {
+              console.error(`Error fetching details for ${item.media_type} ${item.media_id}:`, e);
+              return item;
+            }
+          }
+          return item;
+        })
       );
-      
-      toast({
-        title: "Status updated",
-        description: `Media status updated to ${newStatus}`,
-      });
-    } catch (err) {
-      console.error("Error updating media status:", err);
+
+      setMedia(enhancedMedia as RoomMedia[]);
+    } catch (error) {
+      console.error("Error fetching room media:", error);
       toast({
         title: "Error",
-        description: "Failed to update media status",
+        description: "Failed to load room media",
         variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVote = async (mediaId: string) => {
+    try {
+      setLoadingMediaIds(prev => new Set(prev).add(mediaId));
+      
+      const { error } = await supabase
+        .from("room_media")
+        .update({ 
+          votes: supabase.rpc('increment', { inc: 1 }) 
+        })
+        .eq("id", mediaId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh the list
+      fetchRoomMedia();
+      toast({
+        title: "Vote cast",
+        description: "Your vote has been recorded",
+      });
+    } catch (error) {
+      console.error("Error voting for media:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cast vote",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMediaIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(mediaId);
+        return newSet;
       });
     }
   };
 
-  const handleVote = async (media: RoomMedia, increment: number) => {
+  const handleMarkAsWatched = async (mediaId: string) => {
     try {
-      const newVotes = (media.votes || 0) + increment;
+      setLoadingMediaIds(prev => new Set(prev).add(mediaId));
       
       const { error } = await supabase
         .from("room_media")
-        .update({ votes: newVotes })
-        .eq("id", media.id);
-        
+        .update({ status: 'watched' })
+        .eq("id", mediaId);
+
       if (error) {
         throw error;
       }
-      
-      // Update the local state
-      setMovies(prevMovies => 
-        prevMovies.map(m => m.id === media.id ? { ...m, votes: newVotes } : m)
-      );
-    } catch (err) {
-      console.error("Error updating votes:", err);
+
+      // Refresh the list
+      fetchRoomMedia();
+      toast({
+        title: "Marked as watched",
+        description: "This item has been marked as watched",
+      });
+    } catch (error) {
+      console.error("Error marking media as watched:", error);
       toast({
         title: "Error",
-        description: "Failed to update vote",
+        description: "Failed to update status",
         variant: "destructive",
+      });
+    } finally {
+      setLoadingMediaIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(mediaId);
+        return newSet;
       });
     }
   };
 
-  const handleRemoveMedia = async (mediaId: string) => {
+  const handleDelete = async (mediaId: string) => {
+    if (!confirm("Are you sure you want to remove this item from the room?")) {
+      return;
+    }
+    
     try {
+      setLoadingMediaIds(prev => new Set(prev).add(mediaId));
+      
       const { error } = await supabase
         .from("room_media")
         .delete()
         .eq("id", mediaId);
-        
+
       if (error) {
         throw error;
       }
-      
-      // Update the local state
-      setMovies(prevMovies => prevMovies.filter(m => m.id !== mediaId));
-      
+
+      // Refresh the list
+      fetchRoomMedia();
       toast({
-        title: "Media removed",
-        description: "The media has been removed from the room",
+        title: "Item removed",
+        description: "The item has been removed from the room",
       });
-      
-      onRefresh();
-    } catch (err) {
-      console.error("Error removing media:", err);
+    } catch (error) {
+      console.error("Error deleting media:", error);
       toast({
         title: "Error",
-        description: "Failed to remove media",
+        description: "Failed to remove item",
         variant: "destructive",
+      });
+    } finally {
+      setLoadingMediaIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(mediaId);
+        return newSet;
       });
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-10">
+      <div className="flex justify-center items-center py-12">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
-  if (error) {
+  if (media.length === 0) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (movies.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Film className="h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">No Movies Yet</h3>
+      <div className="text-center py-8">
+        <Film className="h-12 w-12 mx-auto text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">No movies or shows added yet</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Movies added to this room will appear here.
+          Add some movies or TV shows to get started
         </p>
       </div>
     );
@@ -187,77 +211,111 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => 
 
   return (
     <div className="space-y-4">
-      {movies.map((media) => (
-        <Card key={media.id} className="overflow-hidden">
+      {media.map((item) => (
+        <Card key={item.id} className="overflow-hidden">
           <CardContent className="p-0">
-            <div className="flex">
-              <div className="w-24 h-36 flex-shrink-0">
-                {media.poster_path ? (
+            <div className="flex flex-col sm:flex-row">
+              <div className="w-full sm:w-auto sm:flex-shrink-0">
+                {item.poster_path ? (
                   <img 
-                    src={getImageUrl(media.poster_path)} 
-                    alt={media.title || "Movie poster"}
-                    className="w-full h-full object-cover"
+                    src={getImageUrl(item.poster_path, "w185")} 
+                    alt={item.title || `${item.media_type} ${item.media_id}`}
+                    className="w-full sm:w-32 h-48 object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                  <div className="w-full sm:w-32 h-48 bg-muted flex items-center justify-center">
                     <Film className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}
               </div>
-              
-              <div className="flex-1 p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{media.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Added by {media.user?.username || "Unknown"}
-                    </p>
-                    <p className="text-sm text-muted-foreground capitalize mt-1">
-                      Status: {media.status}
-                    </p>
+              <div className="p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-semibold">
+                      {item.title || `${item.media_type === 'movie' ? 'Movie' : 'TV Show'} #${item.media_id}`}
+                    </h3>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-primary/10 text-primary-foreground capitalize">
+                      {item.status}
+                    </span>
                   </div>
                   
-                  <div className="flex space-x-2">
-                    <div className="flex items-center space-x-1">
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => handleVote(media, -1)}
-                      >
-                        <ThumbsDown className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm font-medium">{media.votes || 0}</span>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => handleVote(media, 1)}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    {isAdmin && (
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleRemoveMedia(media.id)}
-                      >
-                        Remove
-                      </Button>
+                  <div className="mt-2 flex items-center text-sm text-muted-foreground">
+                    <span className="capitalize">{item.media_type}</span>
+                    {item.votes !== undefined && item.votes > 0 && (
+                      <span className="ml-2 flex items-center">
+                        • <ThumbsUp className="ml-1 mr-1 h-3.5 w-3.5" /> {item.votes}
+                      </span>
                     )}
                   </div>
+                  
+                  {item.user && (
+                    <div className="mt-3 flex items-center">
+                      <UserAvatar 
+                        user={{ 
+                          name: item.user.name || item.user.email || "Unknown", 
+                          avatar_url: item.user.avatar_url 
+                        }} 
+                        className="h-6 w-6"
+                      />
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        Added by {item.user.name || item.user.email || "Unknown"}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {isAdmin && media.status === 'suggested' && (
-                  <div className="mt-4 flex space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleStatusChange(media, 'approved')}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.status !== 'watched' && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleVote(item.id)}
+                        disabled={loadingMediaIds.has(item.id)}
+                      >
+                        {loadingMediaIds.has(item.id) ? (
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                          <ThumbsUp className="mr-2 h-3 w-3" />
+                        )}
+                        Vote
+                      </Button>
+                      
+                      {isAdmin && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleMarkAsWatched(item.id)}
+                          disabled={loadingMediaIds.has(item.id)}
+                        >
+                          {loadingMediaIds.has(item.id) ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Eye className="mr-2 h-3 w-3" />
+                          )}
+                          Mark Watched
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  
+                  {isAdmin && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={loadingMediaIds.has(item.id)}
                     >
-                      Approve
+                      {loadingMediaIds.has(item.id) ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-3 w-3" />
+                      )}
+                      Remove
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

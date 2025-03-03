@@ -1,22 +1,13 @@
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-
-interface RoomSettings {
-  room_id: string;
-  allow_member_movie_add: boolean;
-  require_movie_approval: boolean;
-  theme: string;
-  private: boolean;
-}
+import { RoomSettings } from "@/lib/types";
 
 interface RoomSettingsDialogProps {
   roomId: string;
@@ -24,51 +15,55 @@ interface RoomSettingsDialogProps {
   onClose: () => void;
 }
 
+const defaultSettings: RoomSettings = {
+  room_id: "",
+  allow_member_movie_add: true,
+  require_movie_approval: false,
+  theme: "default",
+  private: false,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
+};
+
 const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps) => {
-  const [settings, setSettings] = useState<RoomSettings>({
-    room_id: roomId,
-    allow_member_movie_add: true,
-    require_movie_approval: false,
-    theme: "default",
-    private: false
-  });
-  const [roomName, setRoomName] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [settings, setSettings] = useState<RoomSettings>({...defaultSettings, room_id: roomId});
+  const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchSettings = async () => {
-      setIsLoading(true);
+      if (!isOpen || !roomId) return;
+      
+      setLoading(true);
       try {
-        // Fetch room settings
-        const { data: settingsData, error: settingsError } = await supabase
+        const { data, error } = await supabase
           .from("room_settings")
           .select("*")
           .eq("room_id", roomId)
           .single();
-        
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          throw settingsError;
-        }
-        
-        // Fetch room name
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .select("name")
-          .eq("id", roomId)
-          .single();
-        
-        if (roomError) {
-          throw roomError;
-        }
-        
-        if (settingsData) {
-          setSettings(settingsData);
-        }
-        
-        if (roomData) {
-          setRoomName(roomData.name);
+
+        if (error) {
+          // If no settings exist, create default settings
+          if (error.code === 'PGRST116') {
+            const { data: newSettings, error: insertError } = await supabase
+              .from("room_settings")
+              .insert({ room_id: roomId })
+              .select()
+              .single();
+              
+            if (insertError) {
+              throw insertError;
+            }
+            
+            if (newSettings) {
+              setSettings(newSettings as RoomSettings);
+            }
+          } else {
+            throw error;
+          }
+        } else {
+          setSettings(data as RoomSettings);
         }
       } catch (error) {
         console.error("Error fetching room settings:", error);
@@ -78,20 +73,17 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-    
-    if (isOpen && roomId) {
-      fetchSettings();
-    }
+
+    fetchSettings();
   }, [roomId, isOpen, toast]);
 
-  const handleSaveSettings = async () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update room settings
-      const { error: settingsError } = await supabase
+      const { error } = await supabase
         .from("room_settings")
         .upsert({
           room_id: roomId,
@@ -101,26 +93,15 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           private: settings.private,
           updated_at: new Date().toISOString()
         });
-      
-      if (settingsError) {
-        throw settingsError;
+
+      if (error) {
+        throw error;
       }
-      
-      // Update room name
-      const { error: roomError } = await supabase
-        .from("rooms")
-        .update({ name: roomName })
-        .eq("id", roomId);
-      
-      if (roomError) {
-        throw roomError;
-      }
-      
+
       toast({
         title: "Settings saved",
-        description: "Room settings have been updated successfully",
+        description: "Room settings have been updated",
       });
-      
       onClose();
     } catch (error) {
       console.error("Error saving room settings:", error);
@@ -134,127 +115,79 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
     }
   };
 
-  if (isLoading) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <div className="flex justify-center items-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Room Settings</DialogTitle>
           <DialogDescription>
-            Customize your room settings and permissions.
+            Customize how your room works and looks.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="room-name">Room Name</Label>
-            <Input
-              id="room-name"
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-            />
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-          
-          <div className="space-y-4">
-            <Label className="text-sm font-medium">Room Permissions</Label>
-            
+        ) : (
+          <div className="space-y-6 py-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="allow-members-add" className="text-sm">
-                  Allow Members to Add Media
-                </Label>
-                <p className="text-xs text-muted-foreground">
+                <Label htmlFor="allow-member-movie-add">Allow Members to Add Movies</Label>
+                <p className="text-sm text-muted-foreground">
                   Members can add movies and TV shows to the room
                 </p>
               </div>
               <Switch
-                id="allow-members-add"
+                id="allow-member-movie-add"
                 checked={settings.allow_member_movie_add}
                 onCheckedChange={(checked) => 
-                  setSettings((prev) => ({ ...prev, allow_member_movie_add: checked }))
+                  setSettings({...settings, allow_member_movie_add: checked})
                 }
               />
             </div>
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="require-approval" className="text-sm">
-                  Require Admin Approval
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Added media requires admin approval before being shown
+                <Label htmlFor="require-approval">Require Admin Approval</Label>
+                <p className="text-sm text-muted-foreground">
+                  Movies added by members require admin approval
                 </p>
               </div>
               <Switch
                 id="require-approval"
                 checked={settings.require_movie_approval}
                 onCheckedChange={(checked) => 
-                  setSettings((prev) => ({ ...prev, require_movie_approval: checked }))
+                  setSettings({...settings, require_movie_approval: checked})
                 }
               />
             </div>
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="private-room" className="text-sm">
-                  Private Room
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Room is only accessible by invitation
+                <Label htmlFor="private-room">Private Room</Label>
+                <p className="text-sm text-muted-foreground">
+                  Room is only visible to members
                 </p>
               </div>
               <Switch
                 id="private-room"
                 checked={settings.private}
                 onCheckedChange={(checked) => 
-                  setSettings((prev) => ({ ...prev, private: checked }))
+                  setSettings({...settings, private: checked})
                 }
               />
             </div>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="theme">Theme</Label>
-            <Select
-              value={settings.theme}
-              onValueChange={(value) => setSettings((prev) => ({ ...prev, theme: value }))}
-            >
-              <SelectTrigger id="theme">
-                <SelectValue placeholder="Select a theme" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Default</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="retro">Retro</SelectItem>
-                <SelectItem value="neon">Neon</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        )}
         
         <DialogFooter>
-          <Button onClick={onClose} variant="outline">Cancel</Button>
-          <Button onClick={handleSaveSettings} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving
-              </>
-            ) : (
-              "Save Changes"
-            )}
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving || loading}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
           </Button>
         </DialogFooter>
       </DialogContent>

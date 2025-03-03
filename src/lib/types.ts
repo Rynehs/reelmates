@@ -4,6 +4,7 @@ export interface User {
   name: string;
   avatar_url?: string;
   created_at: string;
+  two_factor_enabled?: boolean;
 }
 
 export interface Movie {
@@ -189,9 +190,20 @@ export interface RoomMedia {
   status: 'suggested' | 'approved' | 'watched';
   created_at: string;
   votes?: number;
+  notes?: string;
   title?: string;
   poster_path?: string;
   user?: User;
+}
+
+export interface RoomSettings {
+  room_id: string;
+  allow_member_movie_add: boolean;
+  require_movie_approval: boolean;
+  theme: string;
+  private: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Message {

@@ -14,6 +14,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           id: string
+          two_factor_enabled: boolean | null
           updated_at: string | null
           username: string | null
         }
@@ -21,6 +22,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id: string
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
         }
@@ -28,10 +30,55 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
         }
         Relationships: []
+      }
+      room_media: {
+        Row: {
+          added_by: string
+          created_at: string | null
+          id: string
+          media_id: number
+          media_type: string
+          notes: string | null
+          room_id: string
+          status: string
+          votes: number | null
+        }
+        Insert: {
+          added_by: string
+          created_at?: string | null
+          id?: string
+          media_id: number
+          media_type?: string
+          notes?: string | null
+          room_id: string
+          status?: string
+          votes?: number | null
+        }
+        Update: {
+          added_by?: string
+          created_at?: string | null
+          id?: string
+          media_id?: number
+          media_type?: string
+          notes?: string | null
+          room_id?: string
+          status?: string
+          votes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_media_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       room_members: {
         Row: {
@@ -60,6 +107,44 @@ export type Database = {
             foreignKeyName: "room_members_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_settings: {
+        Row: {
+          allow_member_movie_add: boolean | null
+          created_at: string | null
+          private: boolean | null
+          require_movie_approval: boolean | null
+          room_id: string
+          theme: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_member_movie_add?: boolean | null
+          created_at?: string | null
+          private?: boolean | null
+          require_movie_approval?: boolean | null
+          room_id: string
+          theme?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_member_movie_add?: boolean | null
+          created_at?: string | null
+          private?: boolean | null
+          require_movie_approval?: boolean | null
+          room_id?: string
+          theme?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_settings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
             referencedRelation: "rooms"
             referencedColumns: ["id"]
           },

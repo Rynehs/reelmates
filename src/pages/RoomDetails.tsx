@@ -38,19 +38,12 @@ const RoomDetails = () => {
           return;
         }
 
-        // Fetch room details and settings
-        const [roomResponse, settingsResponse] = await Promise.all([
-          supabase
-            .from("rooms")
-            .select("*")
-            .eq("id", id)
-            .single(),
-          supabase
-            .from("room_settings")
-            .select("*")
-            .eq("room_id", id)
-            .single()
-        ]);
+        // Fetch room details
+        const roomResponse = await supabase
+          .from("rooms")
+          .select("*")
+          .eq("id", id)
+          .single();
 
         if (roomResponse.error) {
           console.error("Error fetching room:", roomResponse.error);
@@ -71,8 +64,27 @@ const RoomDetails = () => {
         
         setRoom(roomWithMembers);
 
-        if (settingsResponse.data) {
-          setAllowMemberMovieAdd(settingsResponse.data.allow_member_movie_add);
+        // Fetch room settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from("room_settings")
+          .select("*")
+          .eq("room_id", id)
+          .single();
+
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          console.error("Error fetching room settings:", settingsError);
+          // Create default settings if not found
+          const { data: newSettings } = await supabase
+            .from("room_settings")
+            .insert({ room_id: id })
+            .select()
+            .single();
+          
+          if (newSettings) {
+            setAllowMemberMovieAdd(newSettings.allow_member_movie_add);
+          }
+        } else if (settingsData) {
+          setAllowMemberMovieAdd(settingsData.allow_member_movie_add);
         }
 
         // Fetch room members with user details
