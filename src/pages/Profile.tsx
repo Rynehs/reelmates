@@ -12,8 +12,9 @@ import { Separator } from "@/components/ui/separator";
 import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
-import { Upload, Bell, User, Shield } from "lucide-react";
+import { Upload, Bell, User, Shield, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Profile = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
@@ -22,6 +23,15 @@ const Profile = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [setupPhase, setSetupPhase] = useState<"initial" | "qrcode" | "verification">("initial");
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -151,6 +161,114 @@ const Profile = () => {
       title: "Notification preferences saved",
       description: "Your notification preferences have been updated",
     });
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    
+    if (error) {
+      setPasswordError(error.message);
+    } else {
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    
+    setIsLoading(false);
+  };
+
+  const initiateTwoFactorSetup = async () => {
+    setVerificationError(null);
+    setIsLoading(true);
+    
+    try {
+      // In a real implementation, you would call your backend API to generate a TOTP secret
+      // and QR code URL. For this demo, we'll simulate the first step of the setup process.
+      setTimeout(() => {
+        setSetupPhase("qrcode");
+        // This is a placeholder QR code URL - in a real app, this would come from your backend
+        setQrCodeUrl("https://placeholder.svg");
+        setIsLoading(false);
+      }, 1500);
+    } catch (error) {
+      toast({
+        title: "Setup failed",
+        description: "Failed to initiate two-factor authentication setup",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
+  const verifyTwoFactorSetup = async () => {
+    setVerificationError(null);
+    if (!verificationCode || verificationCode.length !== 6) {
+      setVerificationError("Please enter a valid 6-digit code");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // In a real implementation, you would call your backend API to verify the code
+      // For this demo, we'll simulate a successful verification
+      setTimeout(() => {
+        setTwoFactorEnabled(true);
+        setSetupPhase("initial");
+        toast({
+          title: "Two-factor authentication enabled",
+          description: "Your account is now more secure with 2FA",
+        });
+        setIsLoading(false);
+      }, 1500);
+    } catch (error) {
+      setVerificationError("Invalid verification code. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
+  const disableTwoFactor = async () => {
+    setIsLoading(true);
+    
+    try {
+      // In a real implementation, you would call your backend API to disable 2FA
+      // For this demo, we'll simulate the process
+      setTimeout(() => {
+        setTwoFactorEnabled(false);
+        toast({
+          title: "Two-factor authentication disabled",
+          description: "2FA has been turned off for your account",
+        });
+        setIsLoading(false);
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disable two-factor authentication",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -289,27 +407,157 @@ const Profile = () => {
           </TabsContent>
           
           <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>
-                  Manage your account security
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium">Change Password</h4>
-                  <p className="text-sm text-muted-foreground mb-4">Update your password regularly for better security</p>
-                  <Button variant="outline">Change Password</Button>
-                </div>
-                <Separator />
-                <div>
-                  <h4 className="font-medium">Two-Factor Authentication</h4>
-                  <p className="text-sm text-muted-foreground mb-4">Add an extra layer of security to your account</p>
-                  <Button variant="outline">Enable 2FA</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change Password</CardTitle>
+                  <CardDescription>
+                    Update your password to keep your account secure
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {passwordError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{passwordError}</AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input 
+                      id="new-password" 
+                      type="password" 
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Input 
+                      id="confirm-password" 
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={handleChangePassword} 
+                    disabled={isLoading || !newPassword || !confirmPassword}
+                  >
+                    {isLoading ? "Updating..." : "Update Password"}
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Two-Factor Authentication</CardTitle>
+                  <CardDescription>
+                    Add an extra layer of security to your account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {setupPhase === "initial" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Two-Factor Authentication</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {twoFactorEnabled 
+                              ? "Two-factor authentication is currently enabled" 
+                              : "Protect your account with an authenticator app"}
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={twoFactorEnabled} 
+                          onCheckedChange={(checked) => {
+                            if (!checked && twoFactorEnabled) {
+                              disableTwoFactor();
+                            } else if (checked && !twoFactorEnabled) {
+                              initiateTwoFactorSetup();
+                            }
+                          }}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {setupPhase === "qrcode" && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Scan QR Code</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Scan this QR code with your authenticator app (such as Google Authenticator or Authy)
+                      </p>
+                      <div className="flex justify-center">
+                        <img 
+                          src={qrCodeUrl || ""}
+                          alt="QR Code for 2FA setup" 
+                          className="w-48 h-48 border border-border rounded-md"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => setSetupPhase("verification")}
+                        className="w-full"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {setupPhase === "verification" && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Enter Verification Code</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Enter the 6-digit code from your authenticator app
+                      </p>
+                      
+                      {verificationError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{verificationError}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="verification-code">Verification Code</Label>
+                        <Input 
+                          id="verification-code"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="Enter 6-digit code"
+                          maxLength={6}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setSetupPhase("qrcode")}
+                          className="flex-1"
+                        >
+                          Back
+                        </Button>
+                        <Button 
+                          onClick={verifyTwoFactorSetup}
+                          disabled={isLoading || verificationCode.length !== 6}
+                          className="flex-1"
+                        >
+                          {isLoading ? "Verifying..." : "Verify"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
