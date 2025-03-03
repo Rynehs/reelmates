@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -8,8 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Film, MessageSquare, PlusCircle, Share2 } from "lucide-react";
+import { Loader2, Users, Film, MessageSquare, PlusCircle, Share2, Settings } from "lucide-react";
 import type { Room, RoomMember, User } from "@/lib/types";
+import AddMovieDialog from "@/components/AddMovieDialog";
+import RoomSettingsDialog from "@/components/RoomSettingsDialog";
+import RoomMoviesList from "@/components/RoomMoviesList";
 
 const RoomDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +22,9 @@ const RoomDetails = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("movies");
+  const [showAddMovie, setShowAddMovie] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [allowMemberMovieAdd, setAllowMemberMovieAdd] = useState(true);
 
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -33,15 +38,22 @@ const RoomDetails = () => {
           return;
         }
 
-        // Fetch room details
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .select("*")
-          .eq("id", id)
-          .single();
+        // Fetch room details and settings
+        const [roomResponse, settingsResponse] = await Promise.all([
+          supabase
+            .from("rooms")
+            .select("*")
+            .eq("id", id)
+            .single(),
+          supabase
+            .from("room_settings")
+            .select("*")
+            .eq("room_id", id)
+            .single()
+        ]);
 
-        if (roomError) {
-          console.error("Error fetching room:", roomError);
+        if (roomResponse.error) {
+          console.error("Error fetching room:", roomResponse.error);
           toast({
             title: "Error",
             description: "Could not load room details. You may not have access to this room.",
@@ -53,11 +65,15 @@ const RoomDetails = () => {
 
         // Fix for the 'members' property required by Room type
         const roomWithMembers = {
-          ...roomData,
+          ...roomResponse.data,
           members: [] // Initialize with empty array to satisfy the Room type
         } as Room;
         
         setRoom(roomWithMembers);
+
+        if (settingsResponse.data) {
+          setAllowMemberMovieAdd(settingsResponse.data.allow_member_movie_add);
+        }
 
         // Fetch room members with user details
         const { data: membersData, error: membersError } = await supabase
@@ -131,6 +147,8 @@ const RoomDetails = () => {
     }
   };
 
+  const canAddMovies = currentUserRole === 'admin' || (currentUserRole === 'member' && allowMemberMovieAdd);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -166,10 +184,16 @@ const RoomDetails = () => {
                 <Share2 className="mr-2 h-4 w-4" />
                 Share Room
               </Button>
-              {currentUserRole === "admin" && (
-                <Button>
+              {canAddMovies && (
+                <Button onClick={() => setShowAddMovie(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Movie
+                </Button>
+              )}
+              {currentUserRole === 'admin' && (
+                <Button variant="outline" onClick={() => setShowSettings(true)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
                 </Button>
               )}
             </div>
@@ -198,17 +222,13 @@ const RoomDetails = () => {
                   <CardTitle>Room Movies</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Film className="h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No Movies Yet</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Movies added to this room will appear here.
-                    </p>
-                    <Button className="mt-4">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Movie
-                    </Button>
-                  </div>
+                  <RoomMoviesList 
+                    roomId={room.id} 
+                    isAdmin={currentUserRole === 'admin'}
+                    onRefresh={() => {
+                      // Implement refresh logic if needed
+                    }}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -267,6 +287,25 @@ const RoomDetails = () => {
           </Tabs>
         </div>
       </main>
+
+      {/* Dialogs */}
+      <AddMovieDialog 
+        roomId={room.id}
+        isOpen={showAddMovie}
+        onClose={() => setShowAddMovie(false)}
+        onMovieAdded={() => {
+          setActiveTab("movies");
+          // Implement refresh logic if needed
+        }}
+      />
+
+      {currentUserRole === 'admin' && (
+        <RoomSettingsDialog
+          roomId={room.id}
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 };

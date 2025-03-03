@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -31,15 +30,14 @@ export interface TVShow {
   media_type?: 'tv';
 }
 
-// Instead of extending partial Movie and TV, we'll define it explicitly
 export interface MediaItem {
   id: number;
-  title?: string;  // for movies
-  name?: string;   // for tv shows
+  title?: string;
+  name?: string;
   poster_path: string | null;
   backdrop_path: string | null;
-  release_date?: string; // for movies
-  first_air_date?: string; // for tv shows
+  release_date?: string;
+  first_air_date?: string;
   vote_average: number;
   overview: string;
   genre_ids: number[];
@@ -190,6 +188,9 @@ export interface RoomMedia {
   added_by: string;
   status: 'suggested' | 'approved' | 'watched';
   created_at: string;
+  votes?: number;
+  title?: string;
+  poster_path?: string;
   user?: User;
 }
 

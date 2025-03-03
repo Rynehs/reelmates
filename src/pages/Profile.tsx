@@ -54,6 +54,7 @@ const Profile = () => {
           setProfile(data);
           setUsername(data.username || "");
           setAvatarUrl(data.avatar_url);
+          setTwoFactorEnabled(data.two_factor_enabled || false);
         } else {
           toast({
             title: "Error fetching profile",
@@ -250,8 +251,28 @@ const Profile = () => {
       );
       
       setBackupCodes(generatedBackupCodes);
-      setTwoFactorEnabled(true);
       
+      if (profile?.id) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ 
+            two_factor_enabled: true,
+          })
+          .eq("id", profile.id);
+          
+        if (error) {
+          console.error("Error saving 2FA settings:", error);
+          toast({
+            title: "Error",
+            description: "Failed to save two-factor authentication settings",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      setTwoFactorEnabled(true);
       setShowBackupCodes(true);
       setIsLoading(false);
     } catch (error) {
@@ -274,6 +295,20 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
+      if (profile?.id) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ 
+            two_factor_enabled: false,
+          })
+          .eq("id", profile.id);
+          
+        if (error) {
+          console.error("Error disabling 2FA:", error);
+          throw error;
+        }
+      }
+      
       setTwoFactorEnabled(false);
       toast({
         title: "Two-factor authentication disabled",
