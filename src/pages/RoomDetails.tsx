@@ -226,7 +226,7 @@ const RoomDetails = () => {
                           <UserAvatar 
                             user={{ 
                               name: member.user?.name || member.user?.email || "Unknown User", 
-                              image: member.user?.avatar_url 
+                              avatar_url: member.user?.avatar_url 
                             }} 
                           />
                           <div>

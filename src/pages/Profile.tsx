@@ -82,7 +82,6 @@ const Profile = () => {
     const fileName = `${profile?.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `avatars/${fileName}`;
     
-    // Upload the file to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file);
@@ -97,7 +96,6 @@ const Profile = () => {
       return;
     }
     
-    // Get the public URL
     const { data: publicUrlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
@@ -105,7 +103,6 @@ const Profile = () => {
     const publicUrl = publicUrlData.publicUrl;
     setAvatarUrl(publicUrl);
     
-    // Update the profile
     if (profile?.id) {
       const { error: updateError } = await supabase
         .from("profiles")
@@ -201,7 +198,6 @@ const Profile = () => {
   };
 
   const generateTOTPSecret = () => {
-    // This function generates a random base32 string to use as a TOTP secret
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     let secret = '';
     for (let i = 0; i < 20; i++) {
@@ -215,18 +211,14 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // Generate a new TOTP secret
       const totpSecret = generateTOTPSecret();
       setSecret(totpSecret);
       
-      // The user's email will be used as the account name
       const accountName = profile?.username || 'user';
-      const issuer = 'ReelMates'; // App name
+      const issuer = 'ReelMates';
       
-      // Generate a URL for the QR code
       const otpAuthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${totpSecret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
       
-      // Generate a URL for the QR code image
       const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpAuthUrl)}`;
       
       setQrCodeUrl(qrCodeImageUrl);
@@ -253,40 +245,12 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, you would verify the code against the secret
-      // Here we're simulating a successful verification for demo purposes
-      
-      // Generate backup codes
       const generatedBackupCodes = Array.from({ length: 10 }, () => 
         Math.floor(100000 + Math.random() * 900000).toString()
       );
       
       setBackupCodes(generatedBackupCodes);
       setTwoFactorEnabled(true);
-      
-      // In a real implementation, you would save the secret and backup codes to the database
-      // associated with the user's account
-      if (profile?.id) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ 
-            two_factor_enabled: true,
-            // In a real app, you would encrypt these values
-            // Note: You would need to add these columns to your profiles table
-            // two_factor_secret: secret, 
-            // backup_codes: generatedBackupCodes.join(',')
-          })
-          .eq("id", profile.id);
-          
-        if (error) {
-          console.error("Error saving 2FA settings:", error);
-          toast({
-            title: "Error",
-            description: "Failed to save two-factor authentication settings",
-            variant: "destructive",
-          });
-        }
-      }
       
       setShowBackupCodes(true);
       setIsLoading(false);
@@ -310,23 +274,6 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      if (profile?.id) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ 
-            two_factor_enabled: false,
-            // In a real app, you would also clear the secret and backup codes
-            // two_factor_secret: null,
-            // backup_codes: null
-          })
-          .eq("id", profile.id);
-          
-        if (error) {
-          console.error("Error disabling 2FA:", error);
-          throw error;
-        }
-      }
-      
       setTwoFactorEnabled(false);
       toast({
         title: "Two-factor authentication disabled",
@@ -651,7 +598,6 @@ const Profile = () => {
         </Tabs>
       </div>
       
-      {/* Backup Codes Dialog */}
       <Dialog open={showBackupCodes} onOpenChange={setShowBackupCodes}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
