@@ -32,7 +32,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => 
         .from("room_media")
         .select(`
           *,
-          profiles:added_by (
+          user:added_by (
             id,
             username,
             avatar_url
@@ -82,15 +82,27 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => 
     try {
       setLoadingMediaIds(prev => new Set(prev).add(mediaId));
       
-      const { error } = await supabase
+      // Fix: Use update with direct value instead of rpc
+      const { data, error } = await supabase
         .from("room_media")
-        .update({ 
-          votes: supabase.rpc('increment', { inc: 1 }) 
-        })
-        .eq("id", mediaId);
-
+        .select('votes')
+        .eq("id", mediaId)
+        .single();
+      
       if (error) {
         throw error;
+      }
+      
+      const currentVotes = data.votes || 0;
+      const newVotes = currentVotes + 1;
+      
+      const { error: updateError } = await supabase
+        .from("room_media")
+        .update({ votes: newVotes })
+        .eq("id", mediaId);
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Refresh the list
@@ -252,13 +264,13 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => 
                     <div className="mt-3 flex items-center">
                       <UserAvatar 
                         user={{ 
-                          name: item.user.name || item.user.email || "Unknown", 
+                          name: item.user.username || "Unknown", 
                           avatar_url: item.user.avatar_url 
                         }} 
                         className="h-6 w-6"
                       />
                       <span className="ml-2 text-xs text-muted-foreground">
-                        Added by {item.user.name || item.user.email || "Unknown"}
+                        Added by {item.user.username || "Unknown"}
                       </span>
                     </div>
                   )}

@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
+import { supabase } from "@/integrations/supabase/client"; 
 import { Navbar } from "@/components/Navbar";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { generateTOTPSecret } from "@/lib/otp";
+import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
 import { Loader2, Copy, CheckCircle, XCircle } from "lucide-react";
 
 const Profile = () => {
@@ -17,6 +18,7 @@ const Profile = () => {
     id: string;
     username: string | null;
     avatar_url: string | null;
+    two_factor_enabled: boolean | null;
   } | null>(null);
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -29,17 +31,47 @@ const Profile = () => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const supabase = useSupabaseClient();
-  const user = useUser();
+  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const getUserSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Error getting session:", error);
+        return;
+      }
+      
+      if (data.session?.user) {
+        setUser(data.session.user);
+      } else {
+        navigate("/login");
+      }
+    };
+    
+    getUserSession();
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_OUT") {
+          navigate("/login");
+        } else if (session?.user) {
+          setUser(session.user);
+        }
+      }
+    );
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const getProfile = async () => {
       setIsLoading(true);
       try {
         if (!user) {
-          navigate("/login");
           return;
         }
 
@@ -72,8 +104,10 @@ const Profile = () => {
       }
     };
 
-    getProfile();
-  }, [user, navigate, supabase, toast]);
+    if (user) {
+      getProfile();
+    }
+  }, [user, toast]);
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -189,10 +223,21 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      const generatedBackupCodes = Array.from({ length: 10 }, () => 
-        Math.floor(100000 + Math.random() * 900000).toString()
-      );
+      // Simple verification without actual OTP validation for demo purposes
+      // In production, use validateTOTP(secret, verificationCode)
+      const isValid = validateTOTP(secret, verificationCode);
       
+      if (!isValid) {
+        toast({
+          title: "Invalid code",
+          description: "The verification code is invalid. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const generatedBackupCodes = generateBackupCodes(10);
       setBackupCodes(generatedBackupCodes);
       
       // Store the 2FA enabled status in the database

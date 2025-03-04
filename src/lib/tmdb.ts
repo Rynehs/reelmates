@@ -1,4 +1,3 @@
-
 // TMDB API client
 import { Movie, TVShow, MovieDetails, TVShowDetails, Genre, MediaItem, SearchResults } from "@/lib/types";
 
@@ -23,7 +22,6 @@ export const fetchTrendingMovies = async (): Promise<MediaResponse> => {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((movie: any) => ({
     ...movie,
     media_type: 'movie'
@@ -42,7 +40,6 @@ export const fetchPopularMovies = async (page = 1): Promise<MediaResponse> => {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((movie: any) => ({
     ...movie,
     media_type: 'movie'
@@ -63,7 +60,6 @@ export const searchMovies = async (query: string, page = 1): Promise<MediaRespon
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((movie: any) => ({
     ...movie,
     media_type: 'movie'
@@ -107,7 +103,6 @@ export const fetchTrendingTVShows = async (): Promise<MediaResponse> => {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((show: any) => ({
     ...show,
     media_type: 'tv'
@@ -126,7 +121,6 @@ export const fetchPopularTVShows = async (page = 1): Promise<MediaResponse> => {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((show: any) => ({
     ...show,
     media_type: 'tv'
@@ -147,7 +141,6 @@ export const searchTVShows = async (query: string, page = 1): Promise<MediaRespo
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((show: any) => ({
     ...show,
     media_type: 'tv'
@@ -227,17 +220,14 @@ export const discoverMovies = async (params: {
   sort_by?: string,
   page?: number 
 }): Promise<MediaResponse> => {
-  // Fix: Create a proper URLSearchParams object
   const queryParams = new URLSearchParams();
   
-  // Add the API key and default params
   queryParams.append('api_key', API_KEY);
   queryParams.append('language', 'en-US');
   queryParams.append('include_adult', 'false');
   queryParams.append('include_video', 'false');
   queryParams.append('page', params.page?.toString() || '1');
   
-  // Add the optional params
   if (params.with_genres) queryParams.append('with_genres', params.with_genres);
   if (params.year) queryParams.append('year', params.year);
   if (params.sort_by) queryParams.append('sort_by', params.sort_by);
@@ -251,7 +241,6 @@ export const discoverMovies = async (params: {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((movie: any) => ({
     ...movie,
     media_type: 'movie'
@@ -266,17 +255,14 @@ export const discoverTVShows = async (params: {
   sort_by?: string,
   page?: number 
 }): Promise<MediaResponse> => {
-  // Fix: Create a proper URLSearchParams object
   const queryParams = new URLSearchParams();
   
-  // Add the API key and default params
   queryParams.append('api_key', API_KEY);
   queryParams.append('language', 'en-US');
   queryParams.append('include_adult', 'false');
   queryParams.append('include_null_first_air_dates', 'false');
   queryParams.append('page', params.page?.toString() || '1');
   
-  // Add the optional params
   if (params.with_genres) queryParams.append('with_genres', params.with_genres);
   if (params.first_air_date_year) queryParams.append('first_air_date_year', params.first_air_date_year);
   if (params.sort_by) queryParams.append('sort_by', params.sort_by);
@@ -290,13 +276,43 @@ export const discoverTVShows = async (params: {
   }
   
   const data = await response.json();
-  // Add media_type to ensure proper typing
   data.results = data.results.map((show: any) => ({
     ...show,
     media_type: 'tv'
   }));
   
   return data;
+};
+
+// Adding the missing getMediaById function
+export const getMediaById = async (mediaId: number, mediaType: 'movie' | 'tv'): Promise<MediaItem> => {
+  let endpoint = mediaType === 'movie' ? 'movie' : 'tv';
+  
+  const response = await fetch(
+    `${BASE_URL}/${endpoint}/${mediaId}?api_key=${API_KEY}&language=en-US`
+  );
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${mediaType} details`);
+  }
+  
+  const data = await response.json();
+  
+  const mediaItem: MediaItem = {
+    id: data.id,
+    title: mediaType === 'movie' ? data.title : undefined,
+    name: mediaType === 'tv' ? data.name : undefined,
+    poster_path: data.poster_path,
+    backdrop_path: data.backdrop_path,
+    release_date: mediaType === 'movie' ? data.release_date : undefined,
+    first_air_date: mediaType === 'tv' ? data.first_air_date : undefined,
+    vote_average: data.vote_average,
+    overview: data.overview,
+    genre_ids: data.genres ? data.genres.map((genre: any) => genre.id) : [],
+    media_type: mediaType
+  };
+  
+  return mediaItem;
 };
 
 // UTILS
