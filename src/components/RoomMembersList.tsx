@@ -28,39 +28,61 @@ const RoomMembersList = ({ roomId, isAdmin, onRefresh }: RoomMembersListProps) =
   const fetchRoomMembers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // First, get room members
+      const { data: membersData, error: membersError } = await supabase
         .from("room_members")
         .select(`
           id,
           room_id,
           user_id,
           role,
-          joined_at,
-          profiles:user_id (
-            id,
-            username,
-            avatar_url
-          )
+          joined_at
         `)
         .eq("room_id", roomId)
         .order("joined_at", { ascending: true });
 
-      if (error) {
-        throw error;
+      if (membersError) {
+        throw membersError;
       }
 
-      // Transform the data to match the expected RoomMember type
-      const transformedMembers = data.map(member => ({
-        ...member,
-        role: member.role as "admin" | "member",
-        user: {
-          id: member.profiles.id,
-          name: member.profiles.username || "Unknown User", 
-          email: "",  // We don't have email in the profiles table
-          created_at: "",  // We don't have this info in the profiles table
-          avatar_url: member.profiles.avatar_url
-        }
-      }));
+      // Then fetch user profiles separately for each member
+      const transformedMembers = await Promise.all(
+        membersData.map(async (member) => {
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("id, username, avatar_url")
+            .eq("id", member.user_id)
+            .single();
+
+          if (profileError) {
+            console.error("Error fetching profile for user", member.user_id, profileError);
+            // Return member with minimal profile info
+            return {
+              ...member,
+              role: member.role as "admin" | "member",
+              user: {
+                id: member.user_id,
+                name: "Unknown User",
+                email: "",
+                created_at: "",
+                avatar_url: undefined
+              }
+            };
+          }
+
+          return {
+            ...member,
+            role: member.role as "admin" | "member",
+            user: {
+              id: profileData.id,
+              name: profileData.username || "Unknown User",
+              email: "",
+              created_at: "",
+              avatar_url: profileData.avatar_url
+            }
+          };
+        })
+      );
 
       setMembers(transformedMembers);
     } catch (error) {

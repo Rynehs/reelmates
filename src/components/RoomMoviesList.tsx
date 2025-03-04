@@ -1,12 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { getImageUrl } from "@/lib/tmdb";
 import { Loader2, ThumbsUp, Eye, Trash2, Film, PlusCircle } from "lucide-react";
-import { RoomMedia, MediaItem } from "@/lib/types";
+import { RoomMedia } from "@/lib/types";
 import UserAvatar from "@/components/UserAvatar";
 import AddMovieDialog from "@/components/AddMovieDialog";
 import { Link } from "react-router-dom";
@@ -46,14 +44,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
       setLoading(true);
       const { data, error } = await supabase
         .from("room_media")
-        .select(`
-          *,
-          user:added_by (
-            id,
-            username,
-            avatar_url
-          )
-        `)
+        .select(`*`)
         .eq("room_id", roomId)
         .order("created_at", { ascending: false });
 
@@ -61,23 +52,26 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         throw error;
       }
 
-      // For each media item, fetch the title and poster path if not already present
       const enhancedMedia = await Promise.all(
         data.map(async (item: any) => {
-          if (!item.title || !item.poster_path) {
-            try {
-              // Handle media details fetching
-              return {
-                ...item,
-                title: item.title || `${item.media_type === 'movie' ? 'Movie' : 'TV Show'} #${item.media_id}`,
-                poster_path: item.poster_path
-              };
-            } catch (e) {
-              console.error(`Error fetching details for ${item.media_type} ${item.media_id}:`, e);
-              return item;
-            }
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("id, username, avatar_url")
+            .eq("id", item.added_by)
+            .single();
+
+          let userProfile: UserProfile | undefined;
+          
+          if (!profileError) {
+            userProfile = profileData;
           }
-          return item;
+
+          return {
+            ...item,
+            title: item.title || `${item.media_type === 'movie' ? 'Movie' : 'TV Show'} #${item.media_id}`,
+            poster_path: item.poster_path,
+            user: userProfile
+          };
         })
       );
 
@@ -98,7 +92,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
     try {
       setLoadingMediaIds(prev => new Set(prev).add(mediaId));
       
-      // Fix: Use update with direct value instead of rpc
       const { data, error } = await supabase
         .from("room_media")
         .select('votes')
@@ -121,7 +114,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         throw updateError;
       }
 
-      // Refresh the list
       fetchRoomMedia();
       toast({
         title: "Vote cast",
@@ -156,7 +148,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         throw error;
       }
 
-      // Refresh the list
       fetchRoomMedia();
       toast({
         title: "Marked as watched",
@@ -195,7 +186,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         throw error;
       }
 
-      // Refresh the list
       fetchRoomMedia();
       toast({
         title: "Item removed",
@@ -252,7 +242,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                 <div className="w-full sm:w-auto sm:flex-shrink-0">
                   {item.poster_path ? (
                     <img 
-                      src={getImageUrl(item.poster_path, "w185")} 
+                      src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
                       alt={item.title || `${item.media_type} ${item.media_id}`}
                       className="w-full sm:w-32 h-48 object-cover"
                     />

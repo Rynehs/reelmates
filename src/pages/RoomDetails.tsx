@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, Film, MessageSquare, PlusCircle, Share2, Settings } from "lucide-react";
-import type { Room } from "@/lib/types";
+import type { Room, RoomMember, User } from "@/lib/types";
 import AddMovieDialog from "@/components/AddMovieDialog";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomMoviesList from "@/components/RoomMoviesList";
@@ -89,12 +89,7 @@ const RoomDetails = () => {
             room_id,
             user_id,
             role,
-            joined_at,
-            profiles:user_id (
-              id,
-              username,
-              avatar_url
-            )
+            joined_at
           `)
           .eq("room_id", id);
 
@@ -103,11 +98,40 @@ const RoomDetails = () => {
           throw membersError;
         }
 
-        const transformedMembers = membersData.map(member => ({
-          ...member,
-          role: member.role as "admin" | "member",
-          user: member.profiles as unknown as User
-        })) as RoomMember[];
+        const transformedMembers = await Promise.all(
+          membersData.map(async (member) => {
+            const { data: profileData, error: profileError } = await supabase
+              .from("profiles")
+              .select("id, username, avatar_url")
+              .eq("id", member.user_id)
+              .single();
+
+            let userProfile: User;
+            if (profileError) {
+              console.error("Error fetching profile for user", member.user_id, profileError);
+              userProfile = {
+                id: member.user_id,
+                name: "Unknown User",
+                email: "",
+                created_at: ""
+              };
+            } else {
+              userProfile = {
+                id: profileData.id,
+                name: profileData.username || "Unknown User",
+                email: "",
+                created_at: "",
+                avatar_url: profileData.avatar_url
+              };
+            }
+
+            return {
+              ...member,
+              role: member.role as "admin" | "member",
+              user: userProfile
+            } as RoomMember;
+          })
+        );
 
         setMembers(transformedMembers);
 
@@ -176,9 +200,9 @@ const RoomDetails = () => {
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold">{room.name}</h1>
+              <h1 className="text-2xl font-bold">{room?.name}</h1>
               <p className="text-sm text-muted-foreground">
-                Created {new Date(room.created_at).toLocaleDateString()}
+                Created {room ? new Date(room.created_at).toLocaleDateString() : ''}
               </p>
             </div>
             <div className="flex space-x-2">
@@ -224,7 +248,7 @@ const RoomDetails = () => {
                 </CardHeader>
                 <CardContent>
                   <RoomMoviesList 
-                    roomId={room.id} 
+                    roomId={room?.id || ''} 
                     isAdmin={currentUserRole === 'admin'}
                     canAddMovies={canAddMovies}
                     onRefresh={() => {
@@ -242,7 +266,7 @@ const RoomDetails = () => {
                 </CardHeader>
                 <CardContent>
                   <RoomMembersList
-                    roomId={room.id}
+                    roomId={room?.id || ''}
                     isAdmin={currentUserRole === 'admin'}
                     onRefresh={() => {
                       // Refresh logic if needed
@@ -273,7 +297,7 @@ const RoomDetails = () => {
       </main>
 
       <AddMovieDialog 
-        roomId={room.id}
+        roomId={room?.id || ''}
         isOpen={showAddMovie}
         onClose={() => setShowAddMovie(false)}
         onMovieAdded={() => {
@@ -282,7 +306,7 @@ const RoomDetails = () => {
         }}
       />
 
-      {currentUserRole === 'admin' && (
+      {currentUserRole === 'admin' && room && (
         <RoomSettingsDialog
           roomId={room.id}
           isOpen={showSettings}
