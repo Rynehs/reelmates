@@ -126,7 +126,12 @@ const Profile = () => {
         throw uploadError;
       }
 
-      const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${filePath}`;
+      // Get the public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+      
+      const publicUrl = publicUrlData.publicUrl;
       setAvatarUrl(publicUrl);
 
       const { error: updateError } = await supabase
