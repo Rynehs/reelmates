@@ -39,35 +39,50 @@ export type Database = {
       room_media: {
         Row: {
           added_by: string
+          category: string | null
           created_at: string | null
           id: string
           media_id: number
           media_type: string
           notes: string | null
+          poster_path: string | null
+          reactions: Json | null
           room_id: string
           status: string
+          tagged_member_id: string | null
+          title: string | null
           votes: number | null
         }
         Insert: {
           added_by: string
+          category?: string | null
           created_at?: string | null
           id?: string
           media_id: number
           media_type?: string
           notes?: string | null
+          poster_path?: string | null
+          reactions?: Json | null
           room_id: string
           status?: string
+          tagged_member_id?: string | null
+          title?: string | null
           votes?: number | null
         }
         Update: {
           added_by?: string
+          category?: string | null
           created_at?: string | null
           id?: string
           media_id?: number
           media_type?: string
           notes?: string | null
+          poster_path?: string | null
+          reactions?: Json | null
           room_id?: string
           status?: string
+          tagged_member_id?: string | null
+          title?: string | null
           votes?: number | null
         }
         Relationships: [

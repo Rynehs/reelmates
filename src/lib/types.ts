@@ -194,6 +194,11 @@ export interface RoomMedia {
   title?: string;
   poster_path?: string;
   user?: User;
+  category?: string;
+  tagged_member_id?: string | null;
+  reactions?: {
+    [key: string]: string[]
+  };
 }
 
 export interface RoomSettings {
