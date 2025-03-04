@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -12,6 +13,7 @@ import AddMovieDialog from "@/components/AddMovieDialog";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomMoviesList from "@/components/RoomMoviesList";
 import RoomMembersList from "@/components/RoomMembersList";
+import RoomChat from "@/components/RoomChat";
 
 const RoomDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -282,13 +284,7 @@ const RoomDetails = () => {
                   <CardTitle>Room Chat</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">Chat Coming Soon</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Chat functionality will be available in a future update.
-                    </p>
-                  </div>
+                  {id && <RoomChat roomId={id} />}
                 </CardContent>
               </Card>
             </TabsContent>
