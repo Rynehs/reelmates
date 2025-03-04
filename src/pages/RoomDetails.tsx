@@ -4,14 +4,14 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Users, Film, MessageSquare, PlusCircle, Share2, Settings } from "lucide-react";
-import type { Room, RoomMember, User } from "@/lib/types";
+import type { Room } from "@/lib/types";
 import AddMovieDialog from "@/components/AddMovieDialog";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomMoviesList from "@/components/RoomMoviesList";
+import RoomMembersList from "@/components/RoomMembersList";
 
 const RoomDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,14 +31,12 @@ const RoomDetails = () => {
       try {
         setLoading(true);
         
-        // Get current session
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           navigate("/");
           return;
         }
 
-        // Fetch room details
         const roomResponse = await supabase
           .from("rooms")
           .select("*")
@@ -56,15 +54,13 @@ const RoomDetails = () => {
           return;
         }
 
-        // Fix for the 'members' property required by Room type
         const roomWithMembers = {
           ...roomResponse.data,
-          members: [] // Initialize with empty array to satisfy the Room type
+          members: []
         } as Room;
         
         setRoom(roomWithMembers);
 
-        // Fetch room settings
         const { data: settingsData, error: settingsError } = await supabase
           .from("room_settings")
           .select("*")
@@ -73,7 +69,6 @@ const RoomDetails = () => {
 
         if (settingsError && settingsError.code !== 'PGRST116') {
           console.error("Error fetching room settings:", settingsError);
-          // Create default settings if not found
           const { data: newSettings } = await supabase
             .from("room_settings")
             .insert({ room_id: id })
@@ -87,7 +82,6 @@ const RoomDetails = () => {
           setAllowMemberMovieAdd(settingsData.allow_member_movie_add);
         }
 
-        // Fetch room members with user details
         const { data: membersData, error: membersError } = await supabase
           .from("room_members")
           .select(`
@@ -109,21 +103,18 @@ const RoomDetails = () => {
           throw membersError;
         }
 
-        // Transform the data to match the expected types
         const transformedMembers = membersData.map(member => ({
           ...member,
-          role: member.role as "admin" | "member", // Cast the role to the expected type
+          role: member.role as "admin" | "member",
           user: member.profiles as unknown as User
         })) as RoomMember[];
 
         setMembers(transformedMembers);
 
-        // Set the current user's role
         const currentMember = membersData.find(member => member.user_id === session.user.id);
         if (currentMember) {
           setCurrentUserRole(currentMember.role);
         } else {
-          // User is not a member, redirect to rooms page
           toast({
             title: "Access Denied",
             description: "You are not a member of this room",
@@ -175,7 +166,7 @@ const RoomDetails = () => {
   }
 
   if (!room) {
-    return null; // This should never happen due to the redirects above
+    return null;
   }
 
   return (
@@ -183,7 +174,6 @@ const RoomDetails = () => {
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* Room Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold">{room.name}</h1>
@@ -211,7 +201,6 @@ const RoomDetails = () => {
             </div>
           </div>
 
-          {/* Room Content Tabs */}
           <Tabs defaultValue="movies" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="movies">
@@ -237,8 +226,9 @@ const RoomDetails = () => {
                   <RoomMoviesList 
                     roomId={room.id} 
                     isAdmin={currentUserRole === 'admin'}
+                    canAddMovies={canAddMovies}
                     onRefresh={() => {
-                      // Implement refresh logic if needed
+                      // Refresh logic if needed
                     }}
                   />
                 </CardContent>
@@ -251,31 +241,13 @@ const RoomDetails = () => {
                   <CardTitle>Room Members</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {members.map(member => (
-                      <div key={member.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <UserAvatar 
-                            user={{ 
-                              name: member.user?.name || member.user?.email || "Unknown User", 
-                              avatar_url: member.user?.avatar_url 
-                            }} 
-                          />
-                          <div>
-                            <p className="font-medium">{member.user?.name || member.user?.email || "Unknown User"}</p>
-                            <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
-                          </div>
-                        </div>
-                        <div>
-                          {currentUserRole === "admin" && member.user_id !== room.created_by && (
-                            <Button variant="outline" size="sm">
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <RoomMembersList
+                    roomId={room.id}
+                    isAdmin={currentUserRole === 'admin'}
+                    onRefresh={() => {
+                      // Refresh logic if needed
+                    }}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -300,14 +272,13 @@ const RoomDetails = () => {
         </div>
       </main>
 
-      {/* Dialogs */}
       <AddMovieDialog 
         roomId={room.id}
         isOpen={showAddMovie}
         onClose={() => setShowAddMovie(false)}
         onMovieAdded={() => {
           setActiveTab("movies");
-          // Implement refresh logic if needed
+          // Refresh logic if needed
         }}
       />
 

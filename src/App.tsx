@@ -12,6 +12,7 @@ import RoomDetails from "./pages/RoomDetails";
 import MovieDetails from "./pages/MovieDetails";
 import TVShowDetails from "./pages/TVShowDetails";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/tv/:id" element={<TVShowDetails />} />
           <Route path="/room/:id" element={<RoomDetails />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/user/:id" element={<UserProfile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
