@@ -15,8 +15,18 @@ interface RoomMoviesListProps {
   onRefresh: () => void;
 }
 
+interface UserProfile {
+  id: string;
+  username?: string | null;
+  avatar_url?: string | null;
+}
+
+interface RoomMediaWithUser extends RoomMedia {
+  user?: UserProfile;
+}
+
 const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => {
-  const [media, setMedia] = useState<RoomMedia[]>([]);
+  const [media, setMedia] = useState<RoomMediaWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMediaIds, setLoadingMediaIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -65,7 +75,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh }: RoomMoviesListProps) => 
         })
       );
 
-      setMedia(enhancedMedia as RoomMedia[]);
+      setMedia(enhancedMedia as RoomMediaWithUser[]);
     } catch (error) {
       console.error("Error fetching room media:", error);
       toast({
