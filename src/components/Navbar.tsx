@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import NotificationsPanel from "@/components/NotificationsPanel";
 
 export const Navbar = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
@@ -156,7 +157,10 @@ export const Navbar = () => {
           </Sheet>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          {/* Add NotificationsPanel here */}
+          <NotificationsPanel />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
