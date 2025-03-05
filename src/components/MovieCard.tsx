@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Movie, TVShow, MediaItem } from "@/lib/types";
@@ -42,7 +41,7 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
     }
   };
 
-  const addToList = async (status: "to_watch" | "watched" | "favorite") => {
+  const addToList = async (newStatus: "to_watch" | "watched" | "favorite") => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -57,22 +56,66 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
       
       setIsAddingToList(true);
       
-      const { error } = await supabase.from("user_movies").upsert({
-        user_id: session.user.id,
-        movie_id: media.id, // Database field name is movie_id
-        media_type: mediaType,
-        status,
-      });
+      // First, check if the media is already in the user's list
+      const { data: existingMedia, error: fetchError } = await supabase
+        .from("user_movies")
+        .select("id, status")
+        .eq("user_id", session.user.id)
+        .eq("movie_id", media.id)
+        .eq("media_type", mediaType)
+        .maybeSingle();
       
-      if (error) throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
       
-      toast({
-        title: `${mediaType === 'movie' ? 'Movie' : 'TV Show'} added`,
-        description: `"${title}" has been added to your ${status.replace("_", " ")} list`,
-      });
+      let result;
+      
+      if (existingMedia) {
+        // If the media already exists and the new status is the same as the current status,
+        // we should remove it (toggle behavior)
+        if (existingMedia.status === newStatus) {
+          result = await supabase
+            .from("user_movies")
+            .delete()
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Removed from ${newStatus.replace("_", " ")}`,
+            description: `"${title}" has been removed from your ${newStatus.replace("_", " ")} list`,
+          });
+        } else {
+          // Otherwise, update the status
+          result = await supabase
+            .from("user_movies")
+            .update({ status: newStatus })
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Status updated`,
+            description: `"${title}" has been moved to your ${newStatus.replace("_", " ")} list`,
+          });
+        }
+      } else {
+        // If the media doesn't exist, insert a new record
+        result = await supabase.from("user_movies").insert({
+          user_id: session.user.id,
+          movie_id: media.id,
+          media_type: mediaType,
+          status: newStatus,
+        });
+        
+        toast({
+          title: `${mediaType === 'movie' ? 'Movie' : 'TV Show'} added`,
+          description: `"${title}" has been added to your ${newStatus.replace("_", " ")} list`,
+        });
+      }
+      
+      if (result.error) throw result.error;
+      
     } catch (error: any) {
       toast({
-        title: `Failed to add ${mediaType === 'movie' ? 'movie' : 'TV show'}`,
+        title: `Failed to update ${mediaType === 'movie' ? 'movie' : 'TV show'}`,
         description: error.message || "Please try again later",
         variant: "destructive",
       });

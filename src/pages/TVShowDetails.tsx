@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ const TVShowDetails = () => {
         setIsLoading(true);
         setError(null);
         
-        // Fetch TV show details and watch providers in parallel
         const [tvShowData, providersData] = await Promise.all([
           fetchTVShowDetails(parseInt(id)),
           fetchTVShowWatchProviders(parseInt(id))
@@ -51,7 +49,6 @@ const TVShowDetails = () => {
         
         setTVShow(tvShowData);
         
-        // Extract US providers or use first available country
         const providerResults = providersData.results || {};
         const usProviders = providerResults.US;
         const firstCountry = Object.keys(providerResults)[0];
@@ -85,22 +82,61 @@ const TVShowDetails = () => {
       
       setIsAddingToList(true);
       
-      const { error } = await supabase.from("user_movies").upsert({
-        user_id: session.user.id,
-        movie_id: tvShow.id, // This field in the database is used for both movies and TV shows
-        media_type: 'tv',
-        status,
-      });
+      const { data: existingMedia, error: fetchError } = await supabase
+        .from("user_movies")
+        .select("id, status")
+        .eq("user_id", session.user.id)
+        .eq("movie_id", tvShow.id)
+        .eq("media_type", 'tv')
+        .maybeSingle();
       
-      if (error) throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
       
-      toast({
-        title: "TV Show added",
-        description: `"${tvShow.name}" has been added to your ${status.replace("_", " ")} list`,
-      });
+      let result;
+      
+      if (existingMedia) {
+        if (existingMedia.status === status) {
+          result = await supabase
+            .from("user_movies")
+            .delete()
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Removed from ${status.replace("_", " ")}`,
+            description: `"${tvShow.name}" has been removed from your ${status.replace("_", " ")} list`,
+          });
+        } else {
+          result = await supabase
+            .from("user_movies")
+            .update({ status: status })
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Status updated`,
+            description: `"${tvShow.name}" has been moved to your ${status.replace("_", " ")} list`,
+          });
+        }
+      } else {
+        result = await supabase.from("user_movies").insert({
+          user_id: session.user.id,
+          movie_id: tvShow.id,
+          media_type: 'tv',
+          status: status,
+        });
+        
+        toast({
+          title: "TV Show added",
+          description: `"${tvShow.name}" has been added to your ${status.replace("_", " ")} list`,
+        });
+      }
+      
+      if (result.error) throw result.error;
+      
     } catch (error: any) {
       toast({
-        title: "Failed to add TV show",
+        title: "Failed to update TV show",
         description: error.message || "Please try again later",
         variant: "destructive",
       });
@@ -146,7 +182,6 @@ const TVShowDetails = () => {
     );
   }
   
-  // Find trailer
   const trailer = tvShow.videos?.results.find(
     (video) => video.type === "Trailer" && video.site === "YouTube"
   );
@@ -252,7 +287,6 @@ const TVShowDetails = () => {
                 </div>
               </div>
               
-              {/* Watch Providers */}
               {watchProviders && (
                 <div className="mt-6">
                   <h3 className="text-lg font-semibold mb-3">Where to Watch</h3>
@@ -364,7 +398,6 @@ const TVShowDetails = () => {
                 </div>
               </div>
               
-              {/* Only display genres if they exist */}
               {tvShow.genres && tvShow.genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
                   {tvShow.genres.map((genre) => (

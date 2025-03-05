@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ const MovieDetails = () => {
         setIsLoading(true);
         setError(null);
         
-        // Fetch movie details and watch providers in parallel
         const [movieData, providersData] = await Promise.all([
           fetchMovieDetails(parseInt(id)),
           fetchMovieWatchProviders(parseInt(id))
@@ -51,7 +49,6 @@ const MovieDetails = () => {
         
         setMovie(movieData);
         
-        // Extract US providers or use first available country
         const providerResults = providersData.results || {};
         const usProviders = providerResults.US;
         const firstCountry = Object.keys(providerResults)[0];
@@ -85,22 +82,61 @@ const MovieDetails = () => {
       
       setIsAddingToList(true);
       
-      const { error } = await supabase.from("user_movies").upsert({
-        user_id: session.user.id,
-        movie_id: movie.id, // Database field is movie_id
-        media_type: 'movie',
-        status,
-      });
+      const { data: existingMedia, error: fetchError } = await supabase
+        .from("user_movies")
+        .select("id, status")
+        .eq("user_id", session.user.id)
+        .eq("movie_id", movie.id)
+        .eq("media_type", 'movie')
+        .maybeSingle();
       
-      if (error) throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
       
-      toast({
-        title: "Movie added",
-        description: `"${movie.title}" has been added to your ${status.replace("_", " ")} list`,
-      });
+      let result;
+      
+      if (existingMedia) {
+        if (existingMedia.status === status) {
+          result = await supabase
+            .from("user_movies")
+            .delete()
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Removed from ${status.replace("_", " ")}`,
+            description: `"${movie.title}" has been removed from your ${status.replace("_", " ")} list`,
+          });
+        } else {
+          result = await supabase
+            .from("user_movies")
+            .update({ status: status })
+            .eq("id", existingMedia.id);
+          
+          toast({
+            title: `Status updated`,
+            description: `"${movie.title}" has been moved to your ${status.replace("_", " ")} list`,
+          });
+        }
+      } else {
+        result = await supabase.from("user_movies").insert({
+          user_id: session.user.id,
+          movie_id: movie.id,
+          media_type: 'movie',
+          status: status,
+        });
+        
+        toast({
+          title: "Movie added",
+          description: `"${movie.title}" has been added to your ${status.replace("_", " ")} list`,
+        });
+      }
+      
+      if (result.error) throw result.error;
+      
     } catch (error: any) {
       toast({
-        title: "Failed to add movie",
+        title: "Failed to update movie",
         description: error.message || "Please try again later",
         variant: "destructive",
       });
@@ -146,7 +182,6 @@ const MovieDetails = () => {
     );
   }
   
-  // Find trailer
   const trailer = movie.videos?.results.find(
     (video) => video.type === "Trailer" && video.site === "YouTube"
   );
@@ -252,7 +287,6 @@ const MovieDetails = () => {
                 </div>
               </div>
               
-              {/* Watch Providers */}
               {watchProviders && (
                 <div className="mt-6">
                   <h3 className="text-lg font-semibold mb-3">Where to Watch</h3>
@@ -351,7 +385,6 @@ const MovieDetails = () => {
                   </span>
                 </div>
                 
-                {/* Only display runtime if it exists */}
                 {movie.runtime && (
                   <div className="flex items-center text-sm">
                     <Clock className="mr-1 h-4 w-4" />
@@ -360,7 +393,6 @@ const MovieDetails = () => {
                 )}
               </div>
               
-              {/* Only display genres if they exist */}
               {movie.genres && movie.genres.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6">
                   {movie.genres.map((genre) => (
