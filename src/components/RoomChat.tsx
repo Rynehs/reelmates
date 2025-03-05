@@ -53,6 +53,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
       try {
         setLoading(true);
         
+        // Use the correct table name with proper type safety
         const { data, error } = await supabase
           .from("messages")
           .select(`
@@ -61,11 +62,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
             user_id,
             content,
             created_at,
-            profiles:user_id (
-              id,
-              username,
-              avatar_url
-            )
+            profiles:user_id(id, username, avatar_url)
           `)
           .eq("room_id", roomId)
           .order("created_at", { ascending: true });
@@ -81,7 +78,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
         }
 
         // Transform data to match Message interface
-        const formattedMessages = data.map((message: any) => ({
+        const formattedMessages: Message[] = data.map((message: any) => ({
           id: message.id,
           room_id: message.room_id,
           user_id: message.user_id,
@@ -131,8 +128,12 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
             .eq("id", payload.new.user_id)
             .single();
 
-          const newMessage: Message = {
-            ...payload.new,
+          const newMsg: Message = {
+            id: payload.new.id,
+            room_id: payload.new.room_id,
+            user_id: payload.new.user_id,
+            content: payload.new.content,
+            created_at: payload.new.created_at,
             user: userData ? {
               id: userData.id,
               name: userData.username || "Unknown User",
@@ -142,7 +143,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
             } : undefined
           };
 
-          setMessages((current) => [...current, newMessage]);
+          setMessages((current) => [...current, newMsg]);
         }
       )
       .subscribe();
