@@ -1,13 +1,11 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, SendIcon } from "lucide-react";
-import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import type { Message, User } from "@/lib/types";
+import MessageList from "@/components/chat/MessageList";
+import MessageInput from "@/components/chat/MessageInput";
 
 interface RoomChatProps {
   roomId: string;
@@ -15,10 +13,8 @@ interface RoomChatProps {
 
 const RoomChat = ({ roomId }: RoomChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch current user
@@ -53,7 +49,6 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
       try {
         setLoading(true);
         
-        // Use the correct table name with proper type safety
         const { data, error } = await supabase
           .from("messages")
           .select(`
@@ -62,7 +57,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
             user_id,
             content,
             created_at,
-            profiles:user_id(id, username, avatar_url)
+            profiles(id, username, avatar_url)
           `)
           .eq("room_id", roomId)
           .order("created_at", { ascending: true });
@@ -153,25 +148,17 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
     };
   }, [roomId, toast]);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newMessage.trim() || !user) return;
+  const handleSendMessage = async (content: string) => {
+    if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("messages")
         .insert({
           room_id: roomId,
           user_id: user.id,
-          content: newMessage.trim()
-        })
-        .select();
+          content: content
+        });
 
       if (error) {
         console.error("Error sending message:", error);
@@ -180,10 +167,7 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
           description: "Could not send message",
           variant: "destructive",
         });
-        return;
       }
-
-      setNewMessage("");
     } catch (error) {
       console.error("Error in handleSendMessage:", error);
       toast({
@@ -204,99 +188,23 @@ const RoomChat = ({ roomId }: RoomChatProps) => {
     return date.toLocaleDateString();
   };
 
-  const isNewDay = (index: number, messages: Message[]) => {
-    if (index === 0) return true;
-    
-    const prevDate = new Date(messages[index - 1].created_at).toLocaleDateString();
-    const currDate = new Date(messages[index].created_at).toLocaleDateString();
-    
-    return prevDate !== currDate;
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-16rem)] overflow-hidden">
       <Card className="flex-1 overflow-hidden">
         <CardContent className="p-4 h-full flex flex-col">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-              {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
-                </div>
-              ) : (
-                <div className="space-y-4 py-4">
-                  {messages.map((message, index) => (
-                    <div key={message.id} className="space-y-4">
-                      {isNewDay(index, messages) && (
-                        <div className="flex justify-center my-2">
-                          <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
-                            {formatDate(message.created_at)}
-                          </div>
-                        </div>
-                      )}
-                      <div className={`flex items-start gap-2 ${message.user_id === user?.id ? 'justify-end' : 'justify-start'}`}>
-                        {message.user_id !== user?.id && (
-                          <UserAvatar
-                            size="sm"
-                            user={{
-                              id: message.user_id,
-                              name: message.user?.name || "Unknown",
-                              avatar_url: message.user?.avatar_url
-                            }}
-                          />
-                        )}
-                        <div className={`max-w-[80%] flex flex-col ${message.user_id === user?.id ? 'items-end' : 'items-start'}`}>
-                          {message.user_id !== user?.id && (
-                            <span className="text-xs text-muted-foreground mb-1">{message.user?.name || "Unknown"}</span>
-                          )}
-                          <div className={`rounded-lg px-3 py-2 ${
-                            message.user_id === user?.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}>
-                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground mt-1">{formatTime(message.created_at)}</span>
-                        </div>
-                        {message.user_id === user?.id && (
-                          <UserAvatar
-                            size="sm"
-                            user={{
-                              id: message.user_id,
-                              name: user?.name || "You",
-                              avatar_url: user?.avatar_url
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
-          )}
-          <form onSubmit={handleSendMessage} className="mt-4 flex items-end gap-2">
-            <Input
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1"
-              disabled={!user}
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <MessageList 
+              messages={messages}
+              loading={loading}
+              currentUserId={user?.id}
+              formatTime={formatTime}
+              formatDate={formatDate}
             />
-            <Button 
-              type="submit" 
-              size="icon" 
-              disabled={!newMessage.trim() || !user}
-              className="h-10 w-10"
-            >
-              <SendIcon className="h-5 w-5" />
-            </Button>
-          </form>
+          </div>
+          <MessageInput 
+            onSendMessage={handleSendMessage}
+            isDisabled={!user}
+          />
         </CardContent>
       </Card>
     </div>
