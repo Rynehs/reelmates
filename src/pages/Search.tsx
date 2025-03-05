@@ -167,14 +167,14 @@ const Search = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
           <h1 className="text-2xl font-bold">Discover Movies & TV Shows</h1>
           
           <Tabs defaultValue="search" className="w-full">
-            <TabsList>
-              <TabsTrigger value="search">Search</TabsTrigger>
-              <TabsTrigger value="discover">Discover</TabsTrigger>
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="search" className="flex-1 md:flex-initial">Search</TabsTrigger>
+              <TabsTrigger value="discover" className="flex-1 md:flex-initial">Discover</TabsTrigger>
             </TabsList>
             
             <TabsContent value="search" className="space-y-4">
@@ -216,20 +216,20 @@ const Search = () => {
                     onChange={(e) => setQuery(e.target.value)}
                     className="flex-1"
                   />
-                  <Button type="submit" disabled={isLoading}>
+                  <Button type="submit" disabled={isLoading} className="whitespace-nowrap">
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <SearchIcon className="h-4 w-4" />
+                      <SearchIcon className="h-4 w-4 md:mr-2" />
                     )}
-                    <span className="ml-2">Search</span>
+                    <span className="hidden md:inline ml-2">Search</span>
                   </Button>
                 </form>
               </div>
             </TabsContent>
             
             <TabsContent value="discover" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Select 
                   value={mediaType} 
                   onValueChange={(value: "movie" | "tv" | "multi") => setMediaType(value)}
@@ -329,7 +329,7 @@ const Search = () => {
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : media.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {media.map((item) => (
                 <Card key={`${item.media_type}-${item.id}`} className="overflow-hidden h-full">
                   <MovieCard media={item} showActions={true} />
