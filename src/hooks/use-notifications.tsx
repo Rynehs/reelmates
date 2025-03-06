@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -52,8 +51,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         userId: item.user_id,
         title: item.title,
         message: item.message,
-        type: item.type,
-        read: item.read,
+        type: item.type as "message" | "movie" | "room" | "system",
+        read: item.read || false,
         entityId: item.entity_id,
         createdAt: item.created_at
       }));
@@ -64,7 +63,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     fetchNotifications();
 
-    // Set up real-time subscription
     const channel = supabase
       .channel('public:notifications')
       .on('postgres_changes', 
