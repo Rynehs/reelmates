@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
 import { Loader2, Copy, CheckCircle, XCircle } from "lucide-react";
@@ -113,23 +113,45 @@ const Profile = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validImageTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a valid image file (JPEG, PNG, GIF, WEBP)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxSizeInBytes) {
+      toast({
+        title: "File too large",
+        description: "Image must be less than 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUpdating(true);
     try {
       const fileExt = file.name.split(".").pop();
-      const filePath = `${profile?.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${profile?.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      // Get the public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
         .from("avatars")
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
       
       const publicUrl = publicUrlData.publicUrl;
       setAvatarUrl(publicUrl);
@@ -147,11 +169,11 @@ const Profile = () => {
         title: "Avatar updated",
         description: "Your avatar has been updated successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({
         title: "Error",
-        description: "Failed to upload avatar",
+        description: error.message || "Failed to upload avatar",
         variant: "destructive",
       });
     } finally {
@@ -228,8 +250,6 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // Simple verification without actual OTP validation for demo purposes
-      // In production, use validateTOTP(secret, verificationCode)
       const isValid = validateTOTP(secret, verificationCode);
       
       if (!isValid) {
@@ -245,7 +265,6 @@ const Profile = () => {
       const generatedBackupCodes = generateBackupCodes(10);
       setBackupCodes(generatedBackupCodes);
       
-      // Store the 2FA enabled status in the database
       if (profile?.id) {
         const { error } = await supabase
           .from("profiles")
@@ -283,7 +302,6 @@ const Profile = () => {
     setIsLoading(true);
     
     try {
-      // Update the profile to disable 2FA
       if (profile?.id) {
         const { error } = await supabase
           .from("profiles")
@@ -337,7 +355,7 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
+        <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Profile</h1>
             <p className="text-sm text-muted-foreground">
@@ -347,33 +365,46 @@ const Profile = () => {
 
           {/* Avatar */}
           <div className="flex flex-col items-center space-y-4">
-            <Avatar className="h-24 w-24">
-              {avatarUrl ? (
-                <AvatarImage src={avatarUrl} alt={username || "Avatar"} />
-              ) : (
-                <AvatarFallback>{username ? username[0].toUpperCase() : "RM"}</AvatarFallback>
-              )}
-            </Avatar>
+            <UserAvatar 
+              user={{ 
+                name: username || "User", 
+                avatar_url: avatarUrl || null 
+              }} 
+              size="xl"
+              showLoadingState={isUpdating}
+            />
             <div className="flex space-x-2">
               <Input
                 type="file"
                 id="avatar-upload"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp"
                 className="hidden"
                 onChange={handleAvatarUpload}
+                disabled={isUpdating}
               />
-              <Label htmlFor="avatar-upload" className="bg-secondary text-secondary-foreground rounded-md px-4 py-2 cursor-pointer hover:bg-secondary/80 transition-colors">
+              <Label 
+                htmlFor="avatar-upload" 
+                className={`${isUpdating 
+                  ? 'bg-secondary/50' 
+                  : 'bg-secondary hover:bg-secondary/80'} text-secondary-foreground rounded-md px-4 py-2 cursor-pointer transition-colors flex items-center`}
+              >
                 {isUpdating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
                 ) : (
                   "Upload New Avatar"
                 )}
               </Label>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Maximum file size: 2MB. Accepted formats: JPEG, PNG, GIF, WEBP
+            </p>
           </div>
 
           {/* Username */}
-          <div className="grid w-full max-w-sm items-center gap-1.5">
+          <div className="grid w-full max-w-sm mx-auto items-center gap-1.5">
             <Label htmlFor="username">Username</Label>
             <Input
               type="text"
@@ -381,10 +412,18 @@ const Profile = () => {
               placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              disabled={isUpdating}
             />
-            <Button onClick={handleUsernameUpdate} disabled={isUpdating}>
+            <Button 
+              onClick={handleUsernameUpdate} 
+              disabled={isUpdating || !username.trim()}
+              className="mt-2"
+            >
               {isUpdating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
               ) : (
                 "Update Username"
               )}
