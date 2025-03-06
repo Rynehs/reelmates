@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type AuthMode = "login" | "register";
 
@@ -17,18 +19,18 @@ const AuthForm = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const clearError = () => setError(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearError();
     
     if (!email || !password || (mode === "register" && !name)) {
-      toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
+      setError("Please fill in all required fields");
       return;
     }
     
@@ -70,45 +72,51 @@ const AuthForm = () => {
         navigate("/dashboard");
       }
     } catch (error: any) {
-      toast({
-        title: "Authentication failed",
-        description: error.message || "Please check your credentials and try again",
-        variant: "destructive",
-      });
+      console.error("Auth error:", error);
+      setError(error.message || "Authentication failed. Please check your credentials and try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    clearError();
     setLoading(true);
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}`
+          redirectTo: window.location.origin,
         }
       });
       
       if (error) throw error;
       
     } catch (error: any) {
-      toast({
-        title: "Google authentication failed",
-        description: error.message || "Please try again later",
-        variant: "destructive",
-      });
+      console.error("Google auth error:", error);
+      setError(error.message || "Google authentication failed. Please try again later.");
       setLoading(false);
     }
   };
 
   return (
-    <Tabs value={mode} onValueChange={(value) => setMode(value as AuthMode)} className="w-full max-w-sm mx-auto">
+    <Tabs value={mode} onValueChange={(value) => {
+      clearError();
+      setMode(value as AuthMode);
+    }} className="w-full max-w-sm mx-auto">
       <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="login">Login</TabsTrigger>
         <TabsTrigger value="register">Register</TabsTrigger>
       </TabsList>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       
       <TabsContent value="login" className="animate-fade-in">
         <Card>
@@ -127,6 +135,7 @@ const AuthForm = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
@@ -138,6 +147,7 @@ const AuthForm = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  autoComplete="current-password"
                 />
               </div>
             </CardContent>
@@ -202,6 +212,7 @@ const AuthForm = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
+                  autoComplete="name"
                 />
               </div>
               <div className="space-y-2">
@@ -213,6 +224,7 @@ const AuthForm = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
@@ -224,6 +236,7 @@ const AuthForm = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  autoComplete="new-password"
                 />
               </div>
             </CardContent>

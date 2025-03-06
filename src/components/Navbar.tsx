@@ -32,6 +32,7 @@ export const Navbar = () => {
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -53,11 +54,47 @@ export const Navbar = () => {
     };
     
     fetchProfile();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+        } else if (event === 'SIGNED_IN' && session) {
+          fetchProfile();
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      setIsLoggingOut(true);
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account",
+      });
+      
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error logging out",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const toggleTheme = () => {
@@ -200,9 +237,9 @@ export const Navbar = () => {
                 Profile Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
                 <LogOut className="mr-2 h-4 w-4" />
-                Log out
+                {isLoggingOut ? 'Logging out...' : 'Log out'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
