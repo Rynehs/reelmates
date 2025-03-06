@@ -11,7 +11,7 @@ export interface Notification {
   message: string;
   type: "message" | "movie" | "room" | "system";
   read: boolean;
-  entityId?: string; // ID of related entity (movie, room, etc.)
+  entityId?: string;
   createdAt: string;
 }
 
@@ -31,27 +31,22 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
 
-  // Fetch notifications on initial load and listen for real-time updates
   useEffect(() => {
     const fetchNotifications = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) return;
-      
-      // Fetch existing notifications
+
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
         .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-        
+        .order("created_at", { ascending: false });
+
       if (error) {
         console.error("Error fetching notifications:", error);
         return;
       }
-      
-      // Format notifications
+
       const formattedNotifications: Notification[] = data.map(item => ({
         id: item.id,
         userId: item.user_id,
@@ -62,14 +57,14 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         entityId: item.entity_id,
         createdAt: item.created_at
       }));
-      
+
       setNotifications(formattedNotifications);
       setUnreadCount(formattedNotifications.filter(n => !n.read).length);
     };
-    
+
     fetchNotifications();
-    
-    // Set up real-time subscription for new notifications
+
+    // Set up real-time subscription
     const channel = supabase
       .channel('public:notifications')
       .on('postgres_changes', 
@@ -85,16 +80,15 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             userId: payload.new.user_id,
             title: payload.new.title,
             message: payload.new.message,
-            type: payload.new.type,
+            type: payload.new.type as Notification['type'],
             read: payload.new.read,
             entityId: payload.new.entity_id,
             createdAt: payload.new.created_at
           };
-          
+
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
-          
-          // Show toast for new notification
+
           toast({
             title: newNotification.title,
             description: newNotification.message,
@@ -105,78 +99,78 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       )
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [toast]);
-  
+
   const markAsRead = async (id: string) => {
     const { error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("id", id);
-      
+
     if (error) {
       console.error("Error marking notification as read:", error);
       return;
     }
-    
+
     setNotifications(prev => 
       prev.map(notif => 
         notif.id === id ? { ...notif, read: true } : notif
       )
     );
-    
+
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
-  
+
   const markAllAsRead = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    
+
     const { error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("user_id", session.user.id)
       .eq("read", false);
-      
+
     if (error) {
       console.error("Error marking all notifications as read:", error);
       return;
     }
-    
+
     setNotifications(prev => 
       prev.map(notif => ({ ...notif, read: true }))
     );
-    
+
     setUnreadCount(0);
   };
-  
+
   const removeNotification = async (id: string) => {
     const { error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", id);
-      
+
     if (error) {
       console.error("Error removing notification:", error);
       return;
     }
-    
-    const isUnread = notifications.find(n => n.id === id)?.read === false;
+
+    const wasUnread = notifications.find(n => n.id === id)?.read === false;
     
     setNotifications(prev => prev.filter(notif => notif.id !== id));
-    
-    if (isUnread) {
+
+    if (wasUnread) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
-  
+
   const addNotification = async (notification: Omit<Notification, "id" | "createdAt" | "userId" | "read">) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    
+
     const { error } = await supabase
       .from("notifications")
       .insert({
@@ -187,12 +181,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         entity_id: notification.entityId,
         read: false
       });
-      
+
     if (error) {
       console.error("Error adding notification:", error);
     }
   };
-  
+
   return (
     <NotificationsContext.Provider 
       value={{ 
