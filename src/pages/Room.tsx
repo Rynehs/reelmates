@@ -49,7 +49,7 @@ const Room = () => {
       // Fetch the room data
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
-        .select('*, description:name')
+        .select('*')
         .eq('id', roomId)
         .single();
       
@@ -160,7 +160,7 @@ const Room = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1">
           <Card className="md:col-span-3 flex flex-col">
             <CardHeader className="p-4 border-b space-y-0">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="chat">Chat</TabsTrigger>
                   <TabsTrigger value="content">Content</TabsTrigger>
@@ -169,18 +169,24 @@ const Room = () => {
             </CardHeader>
             
             <CardContent className="p-0 flex-1 flex flex-col">
-              <TabsContent value="chat" className="flex-1 flex m-0 border-none">
-                {roomId && <RoomChat roomId={roomId} />}
-              </TabsContent>
+              {activeTab === "chat" && roomId && (
+                <div className="flex-1 flex m-0 border-none">
+                  <RoomChat roomId={roomId} />
+                </div>
+              )}
               
-              <TabsContent value="content" className="flex-1 m-0 border-none">
-                {roomId && <RoomMoviesList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />}
-              </TabsContent>
+              {activeTab === "content" && roomId && (
+                <div className="flex-1 m-0 border-none p-4">
+                  <RoomMoviesList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />
+                </div>
+              )}
             </CardContent>
           </Card>
           
           <div className="space-y-6">
-            {roomId && <RoomMembersList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />}
+            {roomId && (
+              <RoomMembersList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />
+            )}
           </div>
         </div>
       </div>
