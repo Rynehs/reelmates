@@ -80,9 +80,15 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
   const [loadingMediaIds, setLoadingMediaIds] = useState<Set<string>>(new Set());
   const [showAddMovie, setShowAddMovie] = useState(false);
   const [submittingReaction, setSubmittingReaction] = useState<{id: string, emoji: string} | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user?.id || null);
+    };
+    checkAuth();
     fetchRoomMedia();
   }, [roomId]);
 
@@ -344,18 +350,9 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
     }
   };
 
-  const getReactionCounts = (reactions: {[key: string]: string[]}) => {
-    const counts: {[key: string]: number} = {};
-    
-    Object.keys(reactions).forEach(emoji => {
-      counts[emoji] = reactions[emoji].length;
-    });
-    
-    return counts;
-  };
-
-  const hasUserReacted = (reactions: {[key: string]: string[]}, emoji: string, userId: string) => {
-    return reactions[emoji] && reactions[emoji].includes(userId);
+  const isUserReacted = (reactions: {[key: string]: string[]}, emoji: string) => {
+    if (!currentUserId || !reactions || !reactions[emoji]) return false;
+    return reactions[emoji].includes(currentUserId);
   };
 
   const CategoryBadge = ({ category }: { category: string }) => {
@@ -512,54 +509,39 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                       </>
                     )}
                     
-                    <TooltipProvider>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Smile className="mr-2 h-3 w-3" />
-                            React
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-2" align="start">
-                          <div className="flex gap-2">
-                            {Object.entries(REACTION_EMOJIS).map(([key, icon]) => {
-                              // Get the user ID to check if they've already reacted
-                              let userId = '';
-                              supabase.auth.getSession().then(({ data }) => {
-                                if (data.session) userId = data.session.user.id;
-                              });
-                              
-                              const reactionCount = item.reactions && item.reactions[key] ? item.reactions[key].length : 0;
-                              const hasReacted = userId && item.reactions && item.reactions[key] ? item.reactions[key].includes(userId) : false;
-                              
-                              return (
-                                <Tooltip key={key}>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant={hasReacted ? "default" : "outline"} 
-                                      size="icon" 
-                                      className="h-8 w-8 relative"
-                                      onClick={() => handleReaction(item.id, key)}
-                                      disabled={submittingReaction && submittingReaction.id === item.id}
-                                    >
-                                      {icon}
-                                      {reactionCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-xs w-4 h-4 flex items-center justify-center">
-                                          {reactionCount}
-                                        </span>
-                                      )}
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {key}
-                                  </TooltipContent>
-                                </Tooltip>
-                              );
-                            })}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </TooltipProvider>
+                    {/* Enhanced React Button Section - All users can react */}
+                    <div className="flex gap-2">
+                      {Object.entries(REACTION_EMOJIS).map(([emoji, icon]) => {
+                        const hasReacted = isUserReacted(item.reactions || {}, emoji);
+                        const count = item.reactions && item.reactions[emoji] ? item.reactions[emoji].length : 0;
+
+                        return (
+                          <TooltipProvider key={emoji}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant={hasReacted ? "default" : "outline"} 
+                                  size="sm"
+                                  className="relative"
+                                  onClick={() => handleReaction(item.id, emoji)}
+                                  disabled={submittingReaction && submittingReaction.id === item.id}
+                                >
+                                  {submittingReaction && submittingReaction.id === item.id && submittingReaction.emoji === emoji ? (
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <span className="mr-1">{icon}</span>
+                                  )}
+                                  {count > 0 && <span>{count}</span>}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {hasReacted ? `Remove your ${emoji} reaction` : `React with ${emoji}`}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })}
+                    </div>
                     
                     {isAdmin && (
                       <Button 
@@ -578,27 +560,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                       </Button>
                     )}
                   </div>
-                  
-                  {/* Display reactions */}
-                  {item.reactions && Object.keys(item.reactions).length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {Object.entries(item.reactions).map(([emoji, users]) => (
-                        users.length > 0 && (
-                          <Tooltip key={emoji}>
-                            <TooltipTrigger asChild>
-                              <div className="inline-flex items-center rounded-full px-2 py-1 text-xs bg-muted">
-                                {REACTION_EMOJIS[emoji as keyof typeof REACTION_EMOJIS]}
-                                <span className="ml-1">{users.length}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {users.length} {users.length === 1 ? 'person' : 'people'} reacted with {emoji}
-                            </TooltipContent>
-                          </Tooltip>
-                        )
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </CardContent>

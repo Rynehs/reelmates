@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,8 @@ const generateRoomCode = () => {
 };
 
 const Rooms = () => {
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
+  const [memberRooms, setMemberRooms] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -45,36 +47,11 @@ const Rooms = () => {
   const fetchRooms = async () => {
     try {
       console.log("Fetching rooms...");
+      setIsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.user) {
-        console.log("No user session found");
-        setIsLoading(false);
-        return;
-      }
-      
-      const { data: memberData, error: memberError } = await supabase
-        .from('room_members')
-        .select('room_id')
-        .eq('user_id', session.user.id);
-      
-      if (memberError) {
-        console.error("Error fetching member data:", memberError);
-        throw memberError;
-      }
-      
-      if (!memberData || memberData.length === 0) {
-        console.log("No room memberships found");
-        setRooms([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      console.log("Found room memberships:", memberData.length);
-      
-      const roomIds = memberData.map(item => item.room_id);
-      
-      const { data, error } = await supabase
+      // First, fetch all rooms (now visible to everyone)
+      const { data: allRoomsData, error: allRoomsError } = await supabase
         .from('rooms')
         .select(`
           id,
@@ -83,15 +60,32 @@ const Rooms = () => {
           created_at,
           created_by
         `)
-        .in('id', roomIds);
+        .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error("Error fetching room data:", error);
-        throw error;
+      if (allRoomsError) {
+        console.error("Error fetching all rooms:", allRoomsError);
+        throw allRoomsError;
       }
       
-      console.log("Fetched rooms:", data?.length || 0);
-      setRooms(data || []);
+      console.log("Fetched all rooms:", allRoomsData?.length || 0);
+      setAllRooms(allRoomsData || []);
+      
+      // If user is logged in, fetch which rooms they're a member of
+      if (session?.user) {
+        const { data: memberData, error: memberError } = await supabase
+          .from('room_members')
+          .select('room_id')
+          .eq('user_id', session.user.id);
+        
+        if (memberError) {
+          console.error("Error fetching member data:", memberError);
+        } else {
+          // Create a set of room IDs that the user is a member of
+          const memberRoomIds = new Set(memberData?.map(item => item.room_id) || []);
+          setMemberRooms(memberRoomIds);
+          console.log("Found room memberships:", memberRoomIds.size);
+        }
+      }
     } catch (error: any) {
       console.error("Error in fetchRooms:", error);
       toast({
@@ -276,6 +270,20 @@ const Rooms = () => {
       description: "Room code copied to clipboard",
     });
   };
+
+  const handleRoomClick = (roomId: string, isMember: boolean) => {
+    if (isMember) {
+      // If already a member, navigate to the room
+      navigate(`/room/${roomId}`);
+    } else {
+      // If not a member, open the join dialog with the room code
+      const room = allRooms.find(r => r.id === roomId);
+      if (room) {
+        setRoomCode(room.code);
+        setShowJoinDialog(true);
+      }
+    }
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -372,42 +380,61 @@ const Rooms = () => {
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : rooms.length > 0 ? (
+          ) : allRooms.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rooms.map((room) => (
-                <Card key={room.id}>
-                  <CardHeader>
-                    <CardTitle>{room.name}</CardTitle>
-                    <CardDescription>
-                      Created {new Date(room.created_at).toLocaleDateString()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex-1 bg-muted px-3 py-2 rounded text-sm">
-                        Room Code: <span className="font-mono">{room.code}</span>
+              {allRooms.map((room) => {
+                const isMember = memberRooms.has(room.id);
+                return (
+                  <Card key={room.id}>
+                    <CardHeader>
+                      <CardTitle>{room.name}</CardTitle>
+                      <CardDescription>
+                        Created {new Date(room.created_at).toLocaleDateString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {isMember && (
+                        <div className="flex items-center space-x-2 mb-3">
+                          <div className="flex-1 bg-muted px-3 py-2 rounded text-sm">
+                            Room Code: <span className="font-mono">{room.code}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => copyRoomCode(room.code)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${isMember ? 'bg-green-500/10 text-green-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {isMember ? 'Member' : 'Not Joined'}
+                        </span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyRoomCode(room.code)}
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        className="w-full" 
+                        variant={isMember ? "default" : "outline"}
+                        onClick={() => handleRoomClick(room.id, isMember)}
                       >
-                        <Copy className="h-4 w-4" />
+                        {isMember ? (
+                          <>
+                            <Users className="mr-2 h-4 w-4" />
+                            View Room
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRightCircle className="mr-2 h-4 w-4" />
+                            Join Room
+                          </>
+                        )}
                       </Button>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={() => navigate(`/room/${room.id}`)}
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      View Room
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Card>

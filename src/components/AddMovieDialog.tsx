@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchX, Search, Film, Users } from "lucide-react";
@@ -240,7 +240,8 @@ const AddMovieDialog = ({ roomId, isOpen, onClose, onMovieAdded }: AddMovieDialo
                   <SelectValue placeholder="Select a member to tag" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  {/* Fixed: Added non-empty value to SelectItem */}
+                  <SelectItem value="none">None</SelectItem>
                   {roomMembers.map((member) => (
                     <SelectItem key={member.user_id} value={member.user_id}>
                       <div className="flex items-center">
