@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -22,6 +21,11 @@ const Room = () => {
   const [activeTab, setActiveTab] = useState("chat");
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,14 +41,14 @@ const Room = () => {
   }, [navigate]);
 
   const { data: roomData, isLoading, error } = useQuery({
-    queryKey: ['room', roomId],
+    queryKey: ['room', roomId, refreshTrigger],
     queryFn: async () => {
       if (!roomId) throw new Error('Room ID is required');
       
       // Fetch the room data
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
-        .select('*')
+        .select('*, description:name')
         .eq('id', roomId)
         .single();
       
@@ -75,11 +79,14 @@ const Room = () => {
           throw new Error('Not a member of this room');
         }
         
-        // Check if user is admin
-        setIsAdmin(memberData.is_admin || false);
+        // Check if user is admin based on role
+        setIsAdmin(memberData.role === 'admin');
       }
       
-      return roomData;
+      return {
+        ...roomData,
+        description: roomData.name // Using name as description for now
+      };
     },
     enabled: !!roomId && !!userId,
   });
@@ -150,7 +157,6 @@ const Room = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1">
-          {/* Room content */}
           <Card className="md:col-span-3 flex flex-col">
             <CardHeader className="p-4 border-b space-y-0">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -167,32 +173,22 @@ const Room = () => {
               </TabsContent>
               
               <TabsContent value="content" className="flex-1 m-0 border-none">
-                {roomId && <RoomMoviesList roomId={roomId} isAdmin={isAdmin} />}
+                {roomId && <RoomMoviesList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />}
               </TabsContent>
             </CardContent>
           </Card>
           
-          {/* Right sidebar */}
           <div className="space-y-6">
-            {/* Members list */}
-            <Card className="overflow-hidden">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg">Members</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-2">
-                {roomId && <RoomMembersList roomId={roomId} isAdmin={isAdmin} />}
-              </CardContent>
-            </Card>
+            {roomId && <RoomMembersList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />}
           </div>
         </div>
       </div>
       
-      {/* Room settings dialog */}
       {roomId && isAdmin && (
         <RoomSettingsDialog 
           roomId={roomId} 
           isOpen={isSettingsOpen} 
-          onOpenChange={setIsSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
         />
       )}
     </div>

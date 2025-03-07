@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserAvatar } from "@/components/UserAvatar";
+import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
 import { Loader2, Copy, CheckCircle, XCircle } from "lucide-react";
