@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNotifications, Notification } from "@/hooks/use-notifications";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,7 +45,6 @@ const NotificationItem = ({ notification }: { notification: Notification }) => {
       markAsRead(notification.id);
     }
     
-    // Navigate based on notification type and entityId
     if (notification.entityId) {
       switch (notification.type) {
         case "movie":
