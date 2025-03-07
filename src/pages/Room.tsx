@@ -12,13 +12,15 @@ import RoomMoviesList from "@/components/RoomMoviesList";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Settings } from "lucide-react";
+import { Loader2, ArrowLeft, Settings, PlusCircle } from "lucide-react";
+import AddMovieDialog from "@/components/AddMovieDialog";
 
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showAddMovie, setShowAddMovie] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -83,10 +85,18 @@ const Room = () => {
         // Check if user is admin based on role
         setIsAdmin(memberData.role === 'admin');
       }
+
+      // Fetch room settings to check if members can add movies
+      const { data: settingsData } = await supabase
+        .from('room_settings')
+        .select('*')
+        .eq('room_id', roomId)
+        .single();
       
       return {
         ...roomData,
-        description: roomData.name // Using name as description for now
+        description: roomData.name, // Using name as description for now
+        settings: settingsData || { allow_member_movie_add: true }
       };
     },
     enabled: !!roomId && !!userId,
@@ -127,6 +137,9 @@ const Room = () => {
     );
   }
 
+  // Check if the user can add movies (admin or members with permission)
+  const canAddMovies = isAdmin || (roomData.settings && roomData.settings.allow_member_movie_add);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -145,16 +158,28 @@ const Room = () => {
             <p className="text-muted-foreground">{roomData.description}</p>
           </div>
           
-          {isAdmin && (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsSettingsOpen(true)}
-              className="mt-2 md:mt-0"
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Room Settings
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {canAddMovies && (
+              <Button 
+                onClick={() => setShowAddMovie(true)}
+                className="mt-2 md:mt-0"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Movie
+              </Button>
+            )}
+            
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                onClick={() => setIsSettingsOpen(true)}
+                className="mt-2 md:mt-0"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Room Settings
+              </Button>
+            )}
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 flex-1">
@@ -177,7 +202,12 @@ const Room = () => {
               
               {activeTab === "content" && roomId && (
                 <div className="flex-1 m-0 border-none p-4">
-                  <RoomMoviesList roomId={roomId} isAdmin={isAdmin} onRefresh={refreshData} />
+                  <RoomMoviesList 
+                    roomId={roomId} 
+                    isAdmin={isAdmin} 
+                    onRefresh={refreshData} 
+                    canAddMovies={canAddMovies}
+                  />
                 </div>
               )}
             </CardContent>
@@ -196,6 +226,18 @@ const Room = () => {
           roomId={roomId} 
           isOpen={isSettingsOpen} 
           onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
+
+      {roomId && (
+        <AddMovieDialog
+          roomId={roomId}
+          isOpen={showAddMovie}
+          onClose={() => setShowAddMovie(false)}
+          onMovieAdded={() => {
+            refreshData();
+            setShowAddMovie(false);
+          }}
         />
       )}
     </div>
