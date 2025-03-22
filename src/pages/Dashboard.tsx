@@ -1,173 +1,86 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
 import { fetchMovieDetails, fetchTVShowDetails } from "@/lib/tmdb";
-import { Movie, TVShow, UserMedia } from "@/lib/types";
+import { Movie, UserMedia } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
-interface DatabaseUserMedia {
-  id: string;
-  user_id: string;
-  movie_id: number; // This is actually media_id
-  media_type?: 'movie' | 'tv';
-  status: string;
-  rating?: number;
-  notes?: string;
-  created_at: string;
-  updated_at?: string;
-}
-
 const Dashboard = () => {
-  const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
-  const [toWatchMovies, setToWatchMovies] = useState<Movie[]>([]);
-  const [favoriteMovies, setFavoriteMovies] = useState<Movie[]>([]);
+  const [movies, setMovies] = useState({
+    watched: [],
+    toWatch: [],
+    favorite: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  
+
   useEffect(() => {
     const fetchUserMovies = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.user) {
-          return;
-        }
-        
-        const { data: userMediaFromDB, error } = await supabase
+        if (!session?.user) return;
+
+        const { data, error } = await supabase
           .from("user_movies")
-          .select("*")
+          .select("id, user_id, movie_id, media_type, status")
           .eq("user_id", session.user.id);
-          
-        if (error) {
-          throw error;
-        }
-        
-        // Map database fields to UserMedia interface
-        const userMedia: UserMedia[] = (userMediaFromDB as DatabaseUserMedia[]).map(item => ({
-          id: item.id,
-          user_id: item.user_id,
-          media_id: item.movie_id, // Map movie_id to media_id
-          media_type: item.media_type || 'movie', // Default to movie if not specified
-          status: item.status as 'watched' | 'to_watch' | 'favorite',
-          rating: item.rating,
-          notes: item.notes,
-          created_at: item.created_at
+
+        if (error) throw error;
+
+        const userMedia = data.map(item => ({
+          ...item,
+          media_type: item.media_type || 'movie',
         }));
-        
-        const watchedData: UserMedia[] = userMedia.filter(item => item.status === "watched");
-        const toWatchData: UserMedia[] = userMedia.filter(item => item.status === "to_watch");
-        const favoriteData: UserMedia[] = userMedia.filter(item => item.status === "favorite");
-        
-        // Fetch full details for each media item
-        const watched = await Promise.all(
-          watchedData.map(async (item) => {
-            try {
-              if (item.media_type === 'movie') {
-                return await fetchMovieDetails(item.media_id);
-              } else {
-                // Convert TV show to Movie format for existing component
-                const tvShow = await fetchTVShowDetails(item.media_id);
-                return {
-                  id: tvShow.id,
-                  title: tvShow.name,
-                  poster_path: tvShow.poster_path,
-                  backdrop_path: tvShow.backdrop_path,
-                  release_date: tvShow.first_air_date,
-                  vote_average: tvShow.vote_average,
-                  overview: tvShow.overview,
-                  genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
-              }
-            } catch (error) {
-              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
-              return null;
+
+        const groupedMedia = {
+          watched: [],
+          toWatch: [],
+          favorite: [],
+        };
+
+        for (const item of userMedia) {
+          try {
+            const mediaDetails = item.media_type === 'movie'
+              ? await fetchMovieDetails(item.movie_id)
+              : await fetchTVShowDetails(item.movie_id);
+
+            if (mediaDetails) {
+              groupedMedia[item.status].push({
+                id: mediaDetails.id,
+                title: mediaDetails.title || mediaDetails.name,
+                poster_path: mediaDetails.poster_path,
+                backdrop_path: mediaDetails.backdrop_path,
+                release_date: mediaDetails.release_date || mediaDetails.first_air_date,
+                vote_average: mediaDetails.vote_average,
+                overview: mediaDetails.overview,
+                genre_ids: mediaDetails.genre_ids,
+              });
             }
-          })
-        );
-        
-        const toWatch = await Promise.all(
-          toWatchData.map(async (item) => {
-            try {
-              if (item.media_type === 'movie') {
-                return await fetchMovieDetails(item.media_id);
-              } else {
-                // Convert TV show to Movie format for existing component
-                const tvShow = await fetchTVShowDetails(item.media_id);
-                return {
-                  id: tvShow.id,
-                  title: tvShow.name,
-                  poster_path: tvShow.poster_path,
-                  backdrop_path: tvShow.backdrop_path,
-                  release_date: tvShow.first_air_date,
-                  vote_average: tvShow.vote_average,
-                  overview: tvShow.overview,
-                  genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
-              }
-            } catch (error) {
-              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
-              return null;
-            }
-          })
-        );
-        
-        const favorites = await Promise.all(
-          favoriteData.map(async (item) => {
-            try {
-              if (item.media_type === 'movie') {
-                return await fetchMovieDetails(item.media_id);
-              } else {
-                // Convert TV show to Movie format for existing component
-                const tvShow = await fetchTVShowDetails(item.media_id);
-                return {
-                  id: tvShow.id,
-                  title: tvShow.name,
-                  poster_path: tvShow.poster_path,
-                  backdrop_path: tvShow.backdrop_path,
-                  release_date: tvShow.first_air_date,
-                  vote_average: tvShow.vote_average,
-                  overview: tvShow.overview,
-                  genre_ids: tvShow.genre_ids,
-                  media_type: 'movie' // We'll convert this within MovieList
-                } as Movie;
-              }
-            } catch (error) {
-              console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
-              return null;
-            }
-          })
-        );
-        
-        // Filter out any null results from failed fetches
-        setWatchedMovies(watched.filter((item): item is Movie => item !== null));
-        setToWatchMovies(toWatch.filter((item): item is Movie => item !== null));
-        setFavoriteMovies(favorites.filter((item): item is Movie => item !== null));
-      } catch (error: any) {
-        toast({
-          title: "Failed to fetch movies",
-          description: error.message || "Please try again later",
-          variant: "destructive",
-        });
+          } catch (fetchError) {
+            console.error(`Failed to fetch ${item.media_type} ${item.movie_id}:`, fetchError);
+          }
+        }
+
+        setMovies(groupedMedia);
+      } catch (error) {
+        toast({ title: "Failed to fetch movies", description: error.message || "Please try again later", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchUserMovies();
   }, [toast]);
-  
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <MovieList
-          watchedMovies={watchedMovies}
-          toWatchMovies={toWatchMovies}
-          favoriteMovies={favoriteMovies}
+          watchedMovies={movies.watched}
+          toWatchMovies={movies.toWatch}
+          favoriteMovies={movies.favorite}
           isLoading={isLoading}
         />
       </main>
