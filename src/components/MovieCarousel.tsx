@@ -1,26 +1,15 @@
-import { useState, useEffect } from "react";
-import { fetchTrendingMovies } from "@/lib/tmdb";
+
+import { useState } from "react";
 import { Movie } from "@/lib/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export const MovieCarousel = () => {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+interface MovieCarouselProps {
+  movies?: Movie[];
+}
 
-  useEffect(() => {
-    const getMovies = async () => {
-      try {
-        const trendingMovies = await fetchTrendingMovies();
-        setMovies(trendingMovies);
-      } catch (error) {
-        console.error("Failed to fetch trending movies:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    getMovies();
-  }, []);
+export const MovieCarousel = ({ movies = [] }: MovieCarouselProps) => {
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [isLoading, setIsLoading] = useState(movies.length === 0);
 
   const scrollLeft = () => {
     setScrollPosition((prev) => Math.max(prev - 500, 0));
