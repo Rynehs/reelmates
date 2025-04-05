@@ -1,65 +1,118 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Movie } from "@/lib/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import MovieCard from "@/components/MovieCard";
 
 interface MovieCarouselProps {
   movies?: Movie[];
+  title: string;
 }
 
-export const MovieCarousel = ({ movies = [] }: MovieCarouselProps) => {
+export const MovieCarousel = ({ movies = [], title }: MovieCarouselProps) => {
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
   const [isLoading, setIsLoading] = useState(movies.length === 0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsLoading(movies.length === 0);
+    
+    // Check if we need to show arrows based on content width
+    const checkArrows = () => {
+      if (!containerRef.current) return;
+      
+      const container = containerRef.current;
+      setShowLeftArrow(scrollPosition > 0);
+      setShowRightArrow(
+        scrollPosition < container.scrollWidth - container.clientWidth - 10
+      );
+    };
+    
+    checkArrows();
+    
+    // Update arrow visibility on window resize
+    window.addEventListener('resize', checkArrows);
+    return () => window.removeEventListener('resize', checkArrows);
+  }, [movies, scrollPosition]);
 
   const scrollLeft = () => {
-    setScrollPosition((prev) => Math.max(prev - 500, 0));
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+    const newPosition = Math.max(scrollPosition - container.clientWidth * 0.75, 0);
+    setScrollPosition(newPosition);
+    container.scrollTo({ left: newPosition, behavior: 'smooth' });
   };
 
   const scrollRight = () => {
-    setScrollPosition((prev) => prev + 500);
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+    const newPosition = Math.min(
+      scrollPosition + container.clientWidth * 0.75,
+      container.scrollWidth - container.clientWidth
+    );
+    setScrollPosition(newPosition);
+    container.scrollTo({ left: newPosition, behavior: 'smooth' });
+  };
+
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    setScrollPosition(containerRef.current.scrollLeft);
   };
 
   return (
-    <div className="relative w-full mt-6">
-      <h2 className="text-xl font-bold mb-3">Trending Now</h2>
+    <div className="relative w-full mt-6 mb-8 group">
+      <div className="flex items-center mb-3">
+        <h2 className="text-xl font-bold">{title}</h2>
+      </div>
 
       <div className="relative">
         {/* Left Arrow */}
-        <button
-          onClick={scrollLeft}
-          className="absolute left-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10"
-        >
-          <ChevronLeft size={24} />
-        </button>
+        {showLeftArrow && (
+          <button
+            onClick={scrollLeft}
+            className="absolute left-0 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={24} />
+          </button>
+        )}
 
         {/* Movie List */}
         <div
+          ref={containerRef}
           className="flex gap-4 overflow-x-scroll no-scrollbar scroll-smooth"
-          style={{ transform: `translateX(-${scrollPosition}px)` }}
+          onScroll={handleScroll}
         >
           {isLoading ? (
-            <p>Loading movies...</p>
+            <div className="flex items-center justify-center h-64 w-full">
+              <p className="text-muted-foreground">Loading movies...</p>
+            </div>
           ) : (
             movies.map((movie) => (
-              <div key={movie.id} className="w-40 min-w-[160px]">
-                <img
-                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                  alt={movie.title}
-                  className="rounded-lg shadow-lg hover:scale-105 transition-transform"
+              <div key={movie.id} className="w-48 min-w-[12rem] flex-shrink-0">
+                <MovieCard 
+                  media={{...movie, media_type: 'movie'}} 
+                  showActions={false}
                 />
-                <p className="text-sm mt-2">{movie.title}</p>
               </div>
             ))
           )}
         </div>
 
         {/* Right Arrow */}
-        <button
-          onClick={scrollRight}
-          className="absolute right-0 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full z-10"
-        >
-          <ChevronRight size={24} />
-        </button>
+        {showRightArrow && (
+          <button
+            onClick={scrollRight}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={24} />
+          </button>
+        )}
       </div>
     </div>
   );

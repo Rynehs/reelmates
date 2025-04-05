@@ -3,16 +3,25 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
-import { fetchMovieDetails, fetchTVShowDetails, fetchTrendingMovies } from "@/lib/tmdb";
+import { 
+  fetchMovieDetails, 
+  fetchTVShowDetails, 
+  fetchTrendingMovies,
+  fetchPopularMovies,
+  discoverMovies 
+} from "@/lib/tmdb";
 import { Movie, TVShow, UserMedia, MediaItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { MovieCarousel } from "@/components/MovieCarousel"; // Component for displaying trending movies
+import { MovieCarousel } from "@/components/MovieCarousel";
 
 const Dashboard = () => {
   const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
   const [toWatchMovies, setToWatchMovies] = useState<Movie[]>([]);
   const [favoriteMovies, setFavoriteMovies] = useState<Movie[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
+  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
+  const [actionMovies, setActionMovies] = useState<Movie[]>([]);
+  const [comedyMovies, setComedyMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
@@ -33,7 +42,7 @@ const Dashboard = () => {
           id: item.id,
           user_id: item.user_id,
           media_id: item.movie_id,
-          media_type: (item.media_type || 'movie') as 'movie' | 'tv', // Cast to the correct union type
+          media_type: (item.media_type || 'movie') as 'movie' | 'tv',
           status: item.status as 'watched' | 'to_watch' | 'favorite',
           rating: item.rating,
           notes: item.notes,
@@ -48,10 +57,19 @@ const Dashboard = () => {
           try {
             if (item.media_type === 'movie') {
               const movieDetails = await fetchMovieDetails(item.media_id);
-              return movieDetails as unknown as Movie; // Cast to Movie type
+              return {
+                id: movieDetails.id,
+                title: movieDetails.title,
+                poster_path: movieDetails.poster_path,
+                backdrop_path: movieDetails.backdrop_path,
+                release_date: movieDetails.release_date,
+                vote_average: movieDetails.vote_average,
+                overview: movieDetails.overview,
+                genre_ids: movieDetails.genres?.map(g => g.id) || [],
+                media_type: 'movie' as const
+              } as Movie;
             } else {
               const tvDetails = await fetchTVShowDetails(item.media_id);
-              // Convert TVShow to Movie-compatible format to avoid type errors
               return {
                 id: tvDetails.id,
                 title: tvDetails.name,
@@ -60,8 +78,8 @@ const Dashboard = () => {
                 release_date: tvDetails.first_air_date,
                 vote_average: tvDetails.vote_average,
                 overview: tvDetails.overview,
-                genre_ids: tvDetails.genre_ids || [],
-                media_type: 'movie'
+                genre_ids: tvDetails.genres?.map(g => g.id) || [],
+                media_type: 'movie' as const
               } as Movie;
             }
           } catch (error) {
@@ -84,18 +102,31 @@ const Dashboard = () => {
       }
     };
     
-    const fetchTrending = async () => {
+    const fetchMovieCategories = async () => {
       try {
+        // Fetch trending movies
         const trending = await fetchTrendingMovies();
-        // Extract just the results array which contains the movies
         setTrendingMovies(trending.results as Movie[]);
+        
+        // Fetch popular movies
+        const popular = await fetchPopularMovies();
+        setPopularMovies(popular.results as Movie[]);
+        
+        // Fetch action movies (genre id 28)
+        const action = await discoverMovies({ with_genres: '28' });
+        setActionMovies(action.results as Movie[]);
+        
+        // Fetch comedy movies (genre id 35)
+        const comedy = await discoverMovies({ with_genres: '35' });
+        setComedyMovies(comedy.results as Movie[]);
+        
       } catch (error) {
-        console.error("Failed to fetch trending movies:", error);
+        console.error("Failed to fetch movie categories:", error);
       }
     };
     
     fetchUserMovies();
-    fetchTrending();
+    fetchMovieCategories();
   }, [toast]);
   
   return (
@@ -109,10 +140,29 @@ const Dashboard = () => {
           isLoading={isLoading}
         />
         
-        {/* Explore Section */}
-        <section className="mt-8">
-          <h2 className="text-2xl font-semibold mb-4">Explore Trending Movies</h2>
-          <MovieCarousel movies={trendingMovies} />
+        {/* Netflix-style Movie Categories */}
+        <section className="mt-8 space-y-2">
+          <h2 className="text-2xl font-semibold mb-4">Explore Movies</h2>
+          
+          <MovieCarousel 
+            movies={trendingMovies} 
+            title="Trending Now" 
+          />
+          
+          <MovieCarousel 
+            movies={popularMovies} 
+            title="Popular Movies" 
+          />
+          
+          <MovieCarousel 
+            movies={actionMovies} 
+            title="Action & Adventure" 
+          />
+          
+          <MovieCarousel 
+            movies={comedyMovies} 
+            title="Comedy" 
+          />
         </section>
       </main>
     </div>
