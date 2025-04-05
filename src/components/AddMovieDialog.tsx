@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,6 @@ const AddMovieDialog = ({ roomId, isOpen, onClose, onMovieAdded }: AddMovieDialo
 
       if (membersError) throw membersError;
 
-      // Now fetch profile data for each member
       const enhancedMembers = await Promise.all(
         membersData.map(async (member) => {
           const { data: profile, error: profileError } = await supabase
@@ -107,7 +105,6 @@ const AddMovieDialog = ({ roomId, isOpen, onClose, onMovieAdded }: AddMovieDialo
     setIsSearching(true);
     try {
       const results = await multiSearch(searchQuery);
-      // Filter to only show movies and TV shows
       const filteredResults = results.results.filter(
         item => item.media_type === 'movie' || item.media_type === 'tv'
       );
@@ -240,8 +237,7 @@ const AddMovieDialog = ({ roomId, isOpen, onClose, onMovieAdded }: AddMovieDialo
                   <SelectValue placeholder="Select a member to tag" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Fixed: Added non-empty value to SelectItem */}
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="no_member">None</SelectItem>
                   {roomMembers.map((member) => (
                     <SelectItem key={member.user_id} value={member.user_id}>
                       <div className="flex items-center">

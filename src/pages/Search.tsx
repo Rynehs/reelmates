@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -43,7 +42,6 @@ const Search = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Fetch genres and trending content when the page loads
   useEffect(() => {
     const fetchGenres = async () => {
       try {
@@ -68,10 +66,9 @@ const Search = () => {
             fetchTrendingTVShows()
           ]);
           
-          // Combine and limit results
           const combined = [...moviesResponse.results, ...tvShowsResponse.results]
-            .sort(() => Math.random() - 0.5) // Shuffle
-            .slice(0, 18); // Take top 18
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 18);
           
           setMedia(combined);
         } catch (error: any) {
@@ -102,7 +99,6 @@ const Search = () => {
       let results;
       
       if (query.trim()) {
-        // Text search
         if (mediaType === "movie") {
           results = await searchMovies(query);
         } else if (mediaType === "tv") {
@@ -112,7 +108,6 @@ const Search = () => {
         }
         setMedia(results.results);
       } else {
-        // Discover by filters
         const params: any = {
           sort_by: sortBy,
         };
@@ -134,13 +129,11 @@ const Search = () => {
         } else if (mediaType === "tv") {
           results = await discoverTVShows(params);
         } else {
-          // For multi, we'll need to make two requests and combine results
           const [movieResults, tvResults] = await Promise.all([
             discoverMovies(params),
             discoverTVShows(params)
           ]);
           
-          // Combine and sort by popularity
           results = {
             results: [...movieResults.results, ...tvResults.results]
               .sort((a, b) => b.vote_average - a.vote_average)
@@ -161,7 +154,6 @@ const Search = () => {
     }
   };
   
-  // Fix: "movieType" is not defined, changed to "mediaType"
   const currentGenres = mediaType === "tv" ? tvGenres : mediaType === "multi" ? [...movieGenres, ...tvGenres] : movieGenres;
   
   return (
@@ -267,7 +259,7 @@ const Search = () => {
                     <SelectValue placeholder="Select Genre" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Genres</SelectItem>
+                    <SelectItem value="all_genres">All Genres</SelectItem>
                     {currentGenres.map((genre) => (
                       <SelectItem key={genre.id} value={genre.id.toString()}>
                         {genre.name}
@@ -284,7 +276,7 @@ const Search = () => {
                     <SelectValue placeholder="Select Year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Years</SelectItem>
+                    <SelectItem value="all_years">All Years</SelectItem>
                     {Array.from({ length: 25 }, (_, i) => new Date().getFullYear() - i).map((year) => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
