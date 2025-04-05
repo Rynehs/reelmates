@@ -30,6 +30,7 @@ const generateRoomCode = () => {
 const Rooms = () => {
   const [allRooms, setAllRooms] = useState<Room[]>([]);
   const [memberRooms, setMemberRooms] = useState<Set<string>>(new Set());
+  const [adminRooms, setAdminRooms] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -74,7 +75,7 @@ const Rooms = () => {
       if (session?.user) {
         const { data: memberData, error: memberError } = await supabase
           .from('room_members')
-          .select('room_id')
+          .select('room_id, role')
           .eq('user_id', session.user.id);
         
         if (memberError) {
@@ -83,7 +84,17 @@ const Rooms = () => {
           // Create a set of room IDs that the user is a member of
           const memberRoomIds = new Set(memberData?.map(item => item.room_id) || []);
           setMemberRooms(memberRoomIds);
+          
+          // Create a set of room IDs where the user is an admin
+          const adminRoomIds = new Set(
+            memberData
+              ?.filter(item => item.role === 'admin')
+              .map(item => item.room_id) || []
+          );
+          setAdminRooms(adminRoomIds);
+          
           console.log("Found room memberships:", memberRoomIds.size);
+          console.log("Found admin rooms:", adminRoomIds.size);
         }
       }
     } catch (error: any) {
@@ -276,12 +287,8 @@ const Rooms = () => {
       // If already a member, navigate to the room
       navigate(`/room/${roomId}`);
     } else {
-      // If not a member, open the join dialog with the room code
-      const room = allRooms.find(r => r.id === roomId);
-      if (room) {
-        setRoomCode(room.code);
-        setShowJoinDialog(true);
-      }
+      // If not a member, open the join dialog
+      setShowJoinDialog(true);
     }
   };
   
@@ -384,6 +391,7 @@ const Rooms = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {allRooms.map((room) => {
                 const isMember = memberRooms.has(room.id);
+                const isAdmin = adminRooms.has(room.id);
                 return (
                   <Card key={room.id}>
                     <CardHeader>
@@ -393,7 +401,7 @@ const Rooms = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {isMember && (
+                      {isMember && isAdmin && (
                         <div className="flex items-center space-x-2 mb-3">
                           <div className="flex-1 bg-muted px-3 py-2 rounded text-sm">
                             Room Code: <span className="font-mono">{room.code}</span>
@@ -409,7 +417,7 @@ const Rooms = () => {
                       )}
                       <div className="mt-2">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${isMember ? 'bg-green-500/10 text-green-600' : 'bg-blue-500/10 text-blue-600'}`}>
-                          {isMember ? 'Member' : 'Not Joined'}
+                          {isMember ? (isAdmin ? 'Admin' : 'Member') : 'Not Joined'}
                         </span>
                       </div>
                     </CardContent>

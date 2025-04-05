@@ -206,12 +206,29 @@ const RoomDetails = () => {
               <p className="text-sm text-muted-foreground">
                 Created {room ? new Date(room.created_at).toLocaleDateString() : ''}
               </p>
+              {currentUserRole === 'admin' && (
+                <div className="mt-2 flex items-center">
+                  <div className="bg-muted px-3 py-1 rounded text-sm">
+                    Invite Code: <span className="font-mono font-semibold">{room.code}</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={copyInviteCode} 
+                    className="ml-2"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={copyInviteCode}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share Room
-              </Button>
+              {currentUserRole === 'admin' && (
+                <Button variant="outline" onClick={copyInviteCode}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share Room
+                </Button>
+              )}
               {canAddMovies && (
                 <Button onClick={() => setShowAddMovie(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" />
