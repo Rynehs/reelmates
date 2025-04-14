@@ -641,23 +641,15 @@ const Rooms = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Movie Rooms</h1>
             <div className="flex space-x-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
-                    <ArrowRightCircle className="mr-2 h-4 w-4" />
-                    Join Room
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
+              <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
+                <ArrowRightCircle className="mr-2 h-4 w-4" />
+                Join Room
+              </Button>
               
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setShowCreateDialog(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create Room
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Room
+              </Button>
             </div>
           </div>
           
@@ -693,22 +685,14 @@ const Rooms = () => {
                   </p>
                 </div>
                 <div className="flex space-x-2 pt-4">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
-                        <ArrowRightCircle className="mr-2 h-4 w-4" />
-                        Join Room
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button onClick={() => setShowCreateDialog(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create Room
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
+                  <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
+                    <ArrowRightCircle className="mr-2 h-4 w-4" />
+                    Join Room
+                  </Button>
+                  <Button onClick={() => setShowCreateDialog(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Room
+                  </Button>
                 </div>
               </CardContent>
             </Card>
