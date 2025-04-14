@@ -4,10 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Image } from "lucide-react";
 import { RoomSettings } from "@/lib/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface RoomSettingsDialogProps {
   roomId: string;
@@ -30,6 +32,9 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const [profileIcon, setProfileIcon] = useState("");
+  const [roomName, setRoomName] = useState("");
+  const [roomDescription, setRoomDescription] = useState("");
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -37,6 +42,7 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
       
       setLoading(true);
       try {
+        // Fetch room settings
         const { data, error } = await supabase
           .from("room_settings")
           .select("*")
@@ -65,6 +71,21 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
         } else {
           setSettings(data as RoomSettings);
         }
+
+        // Fetch room details for profile icon and other info
+        const { data: roomData, error: roomError } = await supabase
+          .from("rooms")
+          .select("name, description, profile_icon")
+          .eq("id", roomId)
+          .single();
+
+        if (roomError) {
+          console.error("Error fetching room details:", roomError);
+        } else if (roomData) {
+          setProfileIcon(roomData.profile_icon || "");
+          setRoomName(roomData.name || "");
+          setRoomDescription(roomData.description || "");
+        }
       } catch (error) {
         console.error("Error fetching room settings:", error);
         toast({
@@ -83,7 +104,8 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      // Save room settings
+      const { error: settingsError } = await supabase
         .from("room_settings")
         .upsert({
           room_id: roomId,
@@ -94,8 +116,23 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           updated_at: new Date().toISOString()
         });
 
-      if (error) {
-        throw error;
+      if (settingsError) {
+        throw settingsError;
+      }
+
+      // Save room details
+      const { error: roomError } = await supabase
+        .from("rooms")
+        .update({
+          profile_icon: profileIcon || null,
+          name: roomName,
+          description: roomDescription || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", roomId);
+
+      if (roomError) {
+        throw roomError;
       }
 
       toast({
@@ -131,6 +168,53 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           </div>
         ) : (
           <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              <Label htmlFor="room-name">Room Name</Label>
+              <Input
+                id="room-name"
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                placeholder="Enter room name"
+              />
+            </div>
+            
+            <div className="space-y-4">
+              <Label htmlFor="room-description">Room Description (Optional)</Label>
+              <Input
+                id="room-description"
+                value={roomDescription}
+                onChange={(e) => setRoomDescription(e.target.value)}
+                placeholder="Describe your room"
+              />
+            </div>
+            
+            <div className="space-y-4">
+              <Label>Room Profile Picture</Label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  {profileIcon ? (
+                    <AvatarImage src={profileIcon} alt="Room profile" />
+                  ) : (
+                    <AvatarFallback>
+                      {roomName.substring(0, 2).toUpperCase() || "RM"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1">
+                  <Input
+                    id="profile-icon"
+                    value={profileIcon}
+                    onChange={(e) => setProfileIcon(e.target.value)}
+                    placeholder="Enter URL for profile picture"
+                    className="mb-1"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter a URL to an image to use as the room profile picture
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="allow-member-movie-add">Allow Members to Add Movies</Label>
