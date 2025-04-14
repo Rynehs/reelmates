@@ -1,4 +1,3 @@
-
 import { 
   Dialog, 
   DialogContent, 
@@ -38,6 +37,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Room } from "@/lib/types";
+import { RoomInputCodeDialog } from "@/components/RoomInputCodeDialog";
 
 const generateRoomCode = () => {
   const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
@@ -58,6 +58,7 @@ const Rooms = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [selectedRoomName, setSelectedRoomName] = useState<string>("");
   const [newRoomName, setNewRoomName] = useState("");
@@ -77,7 +78,6 @@ const Rooms = () => {
       setIsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
-      // First, fetch all rooms (now visible to everyone)
       const { data: allRoomsData, error: allRoomsError } = await supabase
         .from('rooms')
         .select(`
@@ -98,7 +98,6 @@ const Rooms = () => {
       
       console.log("Fetched all rooms:", allRoomsData?.length || 0);
       
-      // Convert the rooms to the correct type with empty members array
       const roomsWithMembers: Room[] = (allRoomsData || []).map(room => ({
         ...room,
         members: []
@@ -106,7 +105,6 @@ const Rooms = () => {
       
       setAllRooms(roomsWithMembers);
       
-      // If user is logged in, fetch which rooms they're a member of
       if (session?.user) {
         const { data: memberData, error: memberError } = await supabase
           .from('room_members')
@@ -116,11 +114,9 @@ const Rooms = () => {
         if (memberError) {
           console.error("Error fetching member data:", memberError);
         } else {
-          // Create a set of room IDs that the user is a member of
           const memberRoomIds = new Set(memberData?.map(item => item.room_id) || []);
           setMemberRooms(memberRoomIds);
           
-          // Create a set of room IDs where the user is an admin
           const adminRoomIds = new Set(
             memberData
               ?.filter(item => item.role === 'admin')
@@ -332,7 +328,6 @@ const Rooms = () => {
         return;
       }
       
-      // Check if user already has a pending request
       const { data: existingRequest } = await supabase
         .from('room_join_requests')
         .select('id, status')
@@ -392,10 +387,8 @@ const Rooms = () => {
 
   const handleRoomClick = (roomId: string, roomName: string, isMember: boolean) => {
     if (isMember) {
-      // If already a member, navigate to the room
       navigate(`/room/${roomId}`);
     } else {
-      // If not a member, open the request dialog
       setSelectedRoomId(roomId);
       setSelectedRoomName(roomName);
       setShowRequestDialog(true);
@@ -422,7 +415,6 @@ const Rooms = () => {
           return;
         }
 
-        // Check if already a member
         const { data: existingMember } = await supabase
           .from("room_members")
           .select("id")
@@ -439,7 +431,6 @@ const Rooms = () => {
           return;
         }
 
-        // Check if already requested
         const { data: existingRequest } = await supabase
           .from("room_join_requests")
           .select("id, status")
@@ -457,7 +448,6 @@ const Rooms = () => {
           return;
         }
 
-        // Submit join request
         const { error } = await supabase
           .from("room_join_requests")
           .insert({
@@ -468,7 +458,6 @@ const Rooms = () => {
 
         if (error) throw error;
 
-        // Create notification for room admins
         const { data: adminMembers } = await supabase
           .from("room_members")
           .select("user_id")
@@ -476,7 +465,6 @@ const Rooms = () => {
           .eq("role", "admin");
 
         if (adminMembers && adminMembers.length > 0) {
-          // Get user info for the notification
           const { data: userProfile } = await supabase
             .from("profiles")
             .select("username")
@@ -485,7 +473,6 @@ const Rooms = () => {
 
           const username = userProfile?.username || session.user.email || "Someone";
 
-          // Create notifications for each admin
           await Promise.all(
             adminMembers.map(admin => 
               supabase
@@ -556,7 +543,13 @@ const Rooms = () => {
     );
   };
 
-  const RoomCard = ({ room, onJoin, onView, isAdmin }: { room: Room; onJoin: () => void; onView: () => void; isAdmin: boolean }) => {
+  const RoomCard = ({ room, onJoin, onView, isAdmin, isMember }: { 
+    room: Room; 
+    onJoin: () => void; 
+    onView: () => void; 
+    isAdmin: boolean;
+    isMember: boolean;
+  }) => {
     const [showJoinRequest, setShowJoinRequest] = useState(false);
     
     return (
@@ -576,15 +569,18 @@ const Rooms = () => {
                 </Avatar>
                 <div>
                   <CardTitle className="text-xl">{room.name}</CardTitle>
-                  {room.description && (
-                    <p className="text-sm text-muted-foreground">{room.description}</p>
-                  )}
                 </div>
               </div>
             </div>
           </CardHeader>
           
           <CardContent>
+            {room.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                {room.description}
+              </p>
+            )}
+            
             <div className="mt-2">
               <p className="text-sm text-muted-foreground mb-2">
                 Created {new Date(room.created_at).toLocaleDateString()}
@@ -598,7 +594,11 @@ const Rooms = () => {
             </div>
             
             <div className="mt-4 flex justify-end space-x-2">
-              {isAdmin ? (
+              {isMember ? (
+                <Button size="sm" onClick={onView}>
+                  View Room
+                </Button>
+              ) : isAdmin ? (
                 <>
                   <Button size="sm" variant="outline" onClick={onJoin}>
                     <Key className="mr-2 h-4 w-4" />
@@ -614,7 +614,7 @@ const Rooms = () => {
                     <UserPlus className="mr-2 h-4 w-4" />
                     Request to Join
                   </Button>
-                  <Button size="sm" onClick={onJoin}>
+                  <Button size="sm" onClick={() => setShowCodeDialog(true)}>
                     Join with Code
                   </Button>
                 </>
@@ -641,96 +641,19 @@ const Rooms = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Movie Rooms</h1>
             <div className="flex space-x-2">
-              <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <ArrowRightCircle className="mr-2 h-4 w-4" />
-                    Join Room
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={joinRoom}>
-                    <DialogHeader>
-                      <DialogTitle>Join a Room</DialogTitle>
-                      <DialogDescription>
-                        Enter the room code to join an existing movie room.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="roomCode">Room Code</Label>
-                        <Input
-                          id="roomCode"
-                          placeholder="Enter 6-digit code"
-                          value={roomCode}
-                          onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                          maxLength={6}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" disabled={isJoining}>
-                        {isJoining ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <ArrowRightCircle className="mr-2 h-4 w-4" />
-                        )}
-                        Join Room
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
+                  <ArrowRightCircle className="mr-2 h-4 w-4" />
+                  Join Room
+                </Button>
+              </DialogTrigger>
               
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create Room
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={createRoom}>
-                    <DialogHeader>
-                      <DialogTitle>Create a Movie Room</DialogTitle>
-                      <DialogDescription>
-                        Create a room to share and discuss movies with friends.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="roomName">Room Name</Label>
-                        <Input
-                          id="roomName"
-                          placeholder="e.g. Movie Night Club"
-                          value={newRoomName}
-                          onChange={(e) => setNewRoomName(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="roomDescription">Room Description (Optional)</Label>
-                        <Textarea
-                          id="roomDescription"
-                          placeholder="Describe your movie room..."
-                          value={newRoomDescription}
-                          onChange={(e) => setNewRoomDescription(e.target.value)}
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" disabled={isCreating}>
-                        {isCreating ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                        )}
-                        Create Room
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <DialogTrigger asChild>
+                <Button onClick={() => setShowCreateDialog(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create Room
+                </Button>
+              </DialogTrigger>
             </div>
           </div>
           
@@ -750,6 +673,7 @@ const Rooms = () => {
                     onJoin={() => handleRoomClick(room.id, room.name, isMember)}
                     onView={() => navigate(`/room/${room.id}`)}
                     isAdmin={isAdmin}
+                    isMember={isMember}
                   />
                 );
               })}
@@ -765,7 +689,7 @@ const Rooms = () => {
                   </p>
                 </div>
                 <div className="flex space-x-2 pt-4">
-                  <Button variant="outline" onClick={() => setShowJoinDialog(true)}>
+                  <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
                     <ArrowRightCircle className="mr-2 h-4 w-4" />
                     Join Room
                   </Button>
@@ -812,6 +736,55 @@ const Rooms = () => {
                   <MessageSquare className="mr-2 h-4 w-4" />
                 )}
                 Send Request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <RoomInputCodeDialog 
+        isOpen={showCodeDialog}
+        onClose={() => setShowCodeDialog(false)}
+      />
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <form onSubmit={createRoom}>
+            <DialogHeader>
+              <DialogTitle>Create a Movie Room</DialogTitle>
+              <DialogDescription>
+                Create a room to share and discuss movies with friends.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="roomName">Room Name</Label>
+                <Input
+                  id="roomName"
+                  placeholder="e.g. Movie Night Club"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="roomDescription">Room Description (Optional)</Label>
+                <Textarea
+                  id="roomDescription"
+                  placeholder="Describe your movie room..."
+                  value={newRoomDescription}
+                  onChange={(e) => setNewRoomDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                )}
+                Create Room
               </Button>
             </DialogFooter>
           </form>

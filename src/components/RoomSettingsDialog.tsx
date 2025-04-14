@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Image } from "lucide-react";
 import { RoomSettings } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FileUploadDialog } from "./FileUploadDialog";
 
 interface RoomSettingsDialogProps {
   roomId: string;
@@ -35,6 +36,7 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
   const [profileIcon, setProfileIcon] = useState("");
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
+  const [showFileUploadDialog, setShowFileUploadDialog] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -152,6 +154,10 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
     }
   };
 
+  const handleImageUploaded = (url: string) => {
+    setProfileIcon(url);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -201,16 +207,14 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
                   )}
                 </Avatar>
                 <div className="flex-1">
-                  <Input
-                    id="profile-icon"
-                    value={profileIcon}
-                    onChange={(e) => setProfileIcon(e.target.value)}
-                    placeholder="Enter URL for profile picture"
-                    className="mb-1"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter a URL to an image to use as the room profile picture
-                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setShowFileUploadDialog(true)}
+                  >
+                    <Image className="mr-2 h-4 w-4" />
+                    {profileIcon ? "Change Profile Picture" : "Upload Profile Picture"}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -275,6 +279,15 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <FileUploadDialog
+        roomId={roomId}
+        isOpen={showFileUploadDialog}
+        onClose={() => setShowFileUploadDialog(false)}
+        currentProfileIcon={profileIcon}
+        roomName={roomName}
+        onImageUploaded={handleImageUploaded}
+      />
     </Dialog>
   );
 };
