@@ -6,10 +6,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Users, Copy, ArrowRightCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Users, Copy, ArrowRightCircle, Loader2, Info, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Room {
   id: string;
@@ -17,6 +19,8 @@ interface Room {
   code: string;
   created_at: string;
   created_by: string;
+  description?: string;
+  profile_icon?: string;
 }
 
 const generateRoomCode = () => {
@@ -34,10 +38,16 @@ const Rooms = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedRoomName, setSelectedRoomName] = useState<string>("");
   const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomDescription, setNewRoomDescription] = useState("");
   const [roomCode, setRoomCode] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -59,7 +69,9 @@ const Rooms = () => {
           name,
           code,
           created_at,
-          created_by
+          created_by,
+          description,
+          profile_icon
         `)
         .order('created_at', { ascending: false });
       
@@ -142,6 +154,7 @@ const Rooms = () => {
         .from('rooms')
         .insert({
           name: newRoomName,
+          description: newRoomDescription.trim() || null,
           created_by: session.user.id,
           code: roomCode,
         })
@@ -174,6 +187,7 @@ const Rooms = () => {
       });
       
       setNewRoomName("");
+      setNewRoomDescription("");
       setShowCreateDialog(false);
       fetchRooms();
     } catch (error: any) {
@@ -273,6 +287,77 @@ const Rooms = () => {
       setIsJoining(false);
     }
   };
+
+  const requestToJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedRoomId) {
+      return;
+    }
+    
+    setIsRequesting(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to request to join a room",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check if user already has a pending request
+      const { data: existingRequest } = await supabase
+        .from('room_join_requests')
+        .select('id, status')
+        .eq('room_id', selectedRoomId)
+        .eq('user_id', session.user.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      
+      if (existingRequest) {
+        toast({
+          title: "Request already pending",
+          description: "You already have a pending join request for this room",
+        });
+        setRequestMessage("");
+        setShowRequestDialog(false);
+        setSelectedRoomId(null);
+        return;
+      }
+      
+      const { error: requestError } = await supabase
+        .from('room_join_requests')
+        .insert({
+          room_id: selectedRoomId,
+          user_id: session.user.id,
+          message: requestMessage,
+          status: 'pending'
+        });
+      
+      if (requestError) throw requestError;
+      
+      toast({
+        title: "Request sent",
+        description: `Your request to join "${selectedRoomName}" has been sent`,
+      });
+      
+      setRequestMessage("");
+      setShowRequestDialog(false);
+      setSelectedRoomId(null);
+    } catch (error: any) {
+      toast({
+        title: "Failed to send request",
+        description: error.message || "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRequesting(false);
+    }
+  };
   
   const copyRoomCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -282,13 +367,15 @@ const Rooms = () => {
     });
   };
 
-  const handleRoomClick = (roomId: string, isMember: boolean) => {
+  const handleRoomClick = (roomId: string, roomName: string, isMember: boolean) => {
     if (isMember) {
       // If already a member, navigate to the room
       navigate(`/room/${roomId}`);
     } else {
-      // If not a member, open the join dialog
-      setShowJoinDialog(true);
+      // If not a member, open the request dialog
+      setSelectedRoomId(roomId);
+      setSelectedRoomName(roomName);
+      setShowRequestDialog(true);
     }
   };
   
@@ -366,6 +453,16 @@ const Rooms = () => {
                           onChange={(e) => setNewRoomName(e.target.value)}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="roomDescription">Room Description (Optional)</Label>
+                        <Textarea
+                          id="roomDescription"
+                          placeholder="Describe your movie room..."
+                          value={newRoomDescription}
+                          onChange={(e) => setNewRoomDescription(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button type="submit" disabled={isCreating}>
@@ -394,13 +491,32 @@ const Rooms = () => {
                 const isAdmin = adminRooms.has(room.id);
                 return (
                   <Card key={room.id}>
-                    <CardHeader>
-                      <CardTitle>{room.name}</CardTitle>
-                      <CardDescription>
-                        Created {new Date(room.created_at).toLocaleDateString()}
-                      </CardDescription>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-10 w-10">
+                          {room.profile_icon ? (
+                            <AvatarImage src={room.profile_icon} alt={room.name} />
+                          ) : (
+                            <AvatarFallback>
+                              {room.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div>
+                          <CardTitle>{room.name}</CardTitle>
+                          <CardDescription>
+                            Created {new Date(room.created_at).toLocaleDateString()}
+                          </CardDescription>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
+                      {room.description && (
+                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                          {room.description}
+                        </p>
+                      )}
+                      
                       {isMember && isAdmin && (
                         <div className="flex items-center space-x-2 mb-3">
                           <div className="flex-1 bg-muted px-3 py-2 rounded text-sm">
@@ -425,7 +541,7 @@ const Rooms = () => {
                       <Button 
                         className="w-full" 
                         variant={isMember ? "default" : "outline"}
-                        onClick={() => handleRoomClick(room.id, isMember)}
+                        onClick={() => handleRoomClick(room.id, room.name, isMember)}
                       >
                         {isMember ? (
                           <>
@@ -434,8 +550,8 @@ const Rooms = () => {
                           </>
                         ) : (
                           <>
-                            <ArrowRightCircle className="mr-2 h-4 w-4" />
-                            Join Room
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Request to Join
                           </>
                         )}
                       </Button>
@@ -469,6 +585,44 @@ const Rooms = () => {
           )}
         </div>
       </main>
+
+      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+        <DialogContent>
+          <form onSubmit={requestToJoin}>
+            <DialogHeader>
+              <DialogTitle>Request to Join Room</DialogTitle>
+              <DialogDescription>
+                Your request will be sent to the room admins for approval.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="requestMessage">Message (Optional)</Label>
+                <Textarea
+                  id="requestMessage"
+                  placeholder="Tell the admins why you'd like to join..."
+                  value={requestMessage}
+                  onChange={(e) => setRequestMessage(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRequestDialog(false)} type="button">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isRequesting}>
+                {isRequesting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                )}
+                Send Request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

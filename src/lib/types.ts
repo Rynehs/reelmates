@@ -169,6 +169,8 @@ export interface Room {
   created_by: string;
   code: string;
   created_at: string;
+  description?: string;
+  profile_icon?: string;
   members: RoomMember[];
 }
 
