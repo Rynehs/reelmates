@@ -1,10 +1,12 @@
+
 import { 
   Dialog, 
   DialogContent, 
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogTrigger 
 } from "@/components/ui/dialog";
 import { 
   Card, 
@@ -26,6 +28,9 @@ import {
   Users,
   Key,
   UserPlus,
+  ArrowRightCircle,
+  PlusCircle,
+  MessageSquare
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -92,7 +97,14 @@ const Rooms = () => {
       }
       
       console.log("Fetched all rooms:", allRoomsData?.length || 0);
-      setAllRooms(allRoomsData || []);
+      
+      // Convert the rooms to the correct type with empty members array
+      const roomsWithMembers: Room[] = (allRoomsData || []).map(room => ({
+        ...room,
+        members: []
+      }));
+      
+      setAllRooms(roomsWithMembers);
       
       // If user is logged in, fetch which rooms they're a member of
       if (session?.user) {

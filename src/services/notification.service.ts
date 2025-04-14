@@ -22,7 +22,7 @@ export async function fetchNotifications() {
     userId: item.user_id,
     title: item.title,
     message: item.message,
-    type: item.type as "message" | "movie" | "room" | "system",
+    type: item.type as "message" | "movie" | "room" | "room_request" | "system",
     read: item.read || false,
     entityId: item.entity_id,
     createdAt: item.created_at
@@ -72,7 +72,7 @@ export async function deleteNotification(id: string) {
 export async function createNotification(notification: {
   title: string;
   message: string;
-  type: "message" | "movie" | "room" | "system";
+  type: "message" | "movie" | "room" | "room_request" | "system";
   entityId?: string;
 }) {
   const { data: { session } } = await supabase.auth.getSession();

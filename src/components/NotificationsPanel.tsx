@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNotifications, Notification } from "@/hooks/use-notifications";
 import { ScrollArea } from "@/components/ui/scroll-area";
