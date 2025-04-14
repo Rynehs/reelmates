@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -10,9 +9,10 @@ import RoomChat from "@/components/RoomChat";
 import RoomMembersList from "@/components/RoomMembersList";
 import RoomMoviesList from "@/components/RoomMoviesList";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
+import RoomJoinRequests from "@/components/RoomJoinRequests";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Settings, PlusCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Settings, PlusCircle, UserPlus } from "lucide-react";
 import AddMovieDialog from "@/components/AddMovieDialog";
 
 const Room = () => {
@@ -25,6 +25,8 @@ const Room = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [showJoinRequests, setShowJoinRequests] = useState(false);
 
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -48,7 +50,6 @@ const Room = () => {
     queryFn: async () => {
       if (!roomId) throw new Error('Room ID is required');
       
-      // Fetch the room data
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .select('*')
@@ -58,7 +59,6 @@ const Room = () => {
       if (roomError) throw roomError;
       if (!roomData) throw new Error('Room not found');
       
-      // Check if user is a member of this room
       if (userId) {
         const { data: memberData, error: memberError } = await supabase
           .from('room_members')
@@ -71,7 +71,6 @@ const Room = () => {
           console.error('Error checking room membership:', memberError);
         }
         
-        // If user isn't a member, redirect to rooms page
         if (!memberData) {
           toast({
             title: "Access denied",
@@ -82,11 +81,21 @@ const Room = () => {
           throw new Error('Not a member of this room');
         }
         
-        // Check if user is admin based on role
         setIsAdmin(memberData.role === 'admin');
+        
+        if (memberData.role === 'admin') {
+          const { data: joinRequests, error: joinRequestsError } = await supabase
+            .from('room_join_requests')
+            .select('id')
+            .eq('room_id', roomId)
+            .eq('status', 'pending');
+            
+          if (!joinRequestsError) {
+            setPendingRequests(joinRequests?.length || 0);
+          }
+        }
       }
 
-      // Fetch room settings to check if members can add movies
       const { data: settingsData } = await supabase
         .from('room_settings')
         .select('*')
@@ -95,7 +104,7 @@ const Room = () => {
       
       return {
         ...roomData,
-        description: roomData.name, // Using name as description for now
+        description: roomData.name,
         settings: settingsData || { allow_member_movie_add: true }
       };
     },
@@ -137,7 +146,6 @@ const Room = () => {
     );
   }
 
-  // Check if the user can add movies (admin or members with permission)
   const canAddMovies = isAdmin || (roomData.settings && roomData.settings.allow_member_movie_add);
 
   return (
@@ -159,6 +167,20 @@ const Room = () => {
           </div>
           
           <div className="flex gap-2">
+            {isAdmin && pendingRequests > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowJoinRequests(true)}
+                className="mt-2 md:mt-0"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Join Requests
+                <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">
+                  {pendingRequests}
+                </span>
+              </Button>
+            )}
+            
             {canAddMovies && (
               <Button 
                 onClick={() => setShowAddMovie(true)}
@@ -238,6 +260,15 @@ const Room = () => {
             refreshData();
             setShowAddMovie(false);
           }}
+        />
+      )}
+
+      {roomId && isAdmin && (
+        <RoomJoinRequests
+          roomId={roomId}
+          isOpen={showJoinRequests}
+          onClose={() => setShowJoinRequests(false)}
+          onRequestHandled={refreshData}
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNotifications, Notification } from "@/hooks/use-notifications";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,9 +10,9 @@ import {
   Users, 
   Check, 
   Trash2, 
-  AlertCircle,
+  Info,
   MessageCircle,
-  Info
+  UserPlus
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +31,8 @@ const NotificationIcon = ({ type }: { type: Notification["type"] }) => {
       return <Film className="h-4 w-4 text-purple-500" />;
     case "room":
       return <Users className="h-4 w-4 text-green-500" />;
+    case "room_request":
+      return <UserPlus className="h-4 w-4 text-orange-500" />;
     case "system":
     default:
       return <Info className="h-4 w-4 text-gray-500" />;
@@ -51,6 +54,7 @@ const NotificationItem = ({ notification }: { notification: Notification }) => {
           navigate(`/movie/${notification.entityId}`);
           break;
         case "room":
+        case "room_request":
           navigate(`/room/${notification.entityId}`);
           break;
         case "message":

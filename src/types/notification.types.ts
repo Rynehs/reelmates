@@ -4,7 +4,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: "message" | "movie" | "room" | "system";
+  type: "message" | "movie" | "room" | "room_request" | "system";
   read: boolean;
   entityId?: string;
   createdAt: string;

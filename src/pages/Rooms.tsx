@@ -1,27 +1,38 @@
-
-import { useState, useEffect } from "react";
-import { Navbar } from "@/components/Navbar";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Loader2,
+  Plus,
+  Search,
+  Users,
+  Key,
+  UserPlus,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Users, Copy, ArrowRightCircle, Loader2, Info, MessageSquare } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-interface Room {
-  id: string;
-  name: string;
-  code: string;
-  created_at: string;
-  created_by: string;
-  description?: string;
-  profile_icon?: string;
-}
+import { Room } from "@/lib/types";
 
 const generateRoomCode = () => {
   const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
@@ -378,7 +389,238 @@ const Rooms = () => {
       setShowRequestDialog(true);
     }
   };
-  
+
+  const JoinRoomDialog = ({ isOpen, onClose, roomId, roomName }: { isOpen: boolean; onClose: () => void; roomId: string; roomName: string }) => {
+    const [message, setMessage] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast({
+            title: "Authentication Required",
+            description: "Please login to request joining a room",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Check if already a member
+        const { data: existingMember } = await supabase
+          .from("room_members")
+          .select("id")
+          .eq("room_id", roomId)
+          .eq("user_id", session.user.id)
+          .single();
+
+        if (existingMember) {
+          toast({
+            title: "Already a Member",
+            description: "You are already a member of this room",
+          });
+          onClose();
+          return;
+        }
+
+        // Check if already requested
+        const { data: existingRequest } = await supabase
+          .from("room_join_requests")
+          .select("id, status")
+          .eq("room_id", roomId)
+          .eq("user_id", session.user.id)
+          .eq("status", "pending")
+          .single();
+
+        if (existingRequest) {
+          toast({
+            title: "Request Pending",
+            description: "You already have a pending request to join this room",
+          });
+          onClose();
+          return;
+        }
+
+        // Submit join request
+        const { error } = await supabase
+          .from("room_join_requests")
+          .insert({
+            room_id: roomId,
+            user_id: session.user.id,
+            message: message.trim() || null,
+          });
+
+        if (error) throw error;
+
+        // Create notification for room admins
+        const { data: adminMembers } = await supabase
+          .from("room_members")
+          .select("user_id")
+          .eq("room_id", roomId)
+          .eq("role", "admin");
+
+        if (adminMembers && adminMembers.length > 0) {
+          // Get user info for the notification
+          const { data: userProfile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", session.user.id)
+            .single();
+
+          const username = userProfile?.username || session.user.email || "Someone";
+
+          // Create notifications for each admin
+          await Promise.all(
+            adminMembers.map(admin => 
+              supabase
+                .from("notifications")
+                .insert({
+                  user_id: admin.user_id,
+                  title: "New Join Request",
+                  message: `${username} has requested to join your room "${roomName}"`,
+                  type: "room",
+                  entity_id: roomId
+                })
+            )
+          );
+        }
+
+        toast({
+          title: "Request Sent",
+          description: "Your request to join the room has been sent to the room admins",
+        });
+
+        onClose();
+      } catch (error) {
+        console.error("Error submitting join request:", error);
+        toast({
+          title: "Error",
+          description: "Failed to submit join request",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Request to Join {roomName}</DialogTitle>
+            <DialogDescription>
+              Send a request to the room admins to join this room. You can include a message with your request.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="message">Message (Optional)</Label>
+                <Textarea
+                  id="message"
+                  placeholder="Why do you want to join this room?"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Send Request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const RoomCard = ({ room, onJoin, onView, isAdmin }: { room: Room; onJoin: () => void; onView: () => void; isAdmin: boolean }) => {
+    const [showJoinRequest, setShowJoinRequest] = useState(false);
+    
+    return (
+      <>
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  {room.profile_icon ? (
+                    <AvatarImage src={room.profile_icon} alt={room.name} />
+                  ) : (
+                    <AvatarFallback>
+                      {room.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div>
+                  <CardTitle className="text-xl">{room.name}</CardTitle>
+                  {room.description && (
+                    <p className="text-sm text-muted-foreground">{room.description}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent>
+            <div className="mt-2">
+              <p className="text-sm text-muted-foreground mb-2">
+                Created {new Date(room.created_at).toLocaleDateString()}
+              </p>
+              {room.members && (
+                <p className="text-sm text-muted-foreground">
+                  <Users className="inline h-4 w-4 mr-1" /> 
+                  {room.members.length} member{room.members.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+            
+            <div className="mt-4 flex justify-end space-x-2">
+              {isAdmin ? (
+                <>
+                  <Button size="sm" variant="outline" onClick={onJoin}>
+                    <Key className="mr-2 h-4 w-4" />
+                    {room.code}
+                  </Button>
+                  <Button size="sm" onClick={onView}>
+                    View Room
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setShowJoinRequest(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Request to Join
+                  </Button>
+                  <Button size="sm" onClick={onJoin}>
+                    Join with Code
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <JoinRoomDialog 
+          isOpen={showJoinRequest} 
+          onClose={() => setShowJoinRequest(false)} 
+          roomId={room.id} 
+          roomName={room.name} 
+        />
+      </>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -490,73 +732,13 @@ const Rooms = () => {
                 const isMember = memberRooms.has(room.id);
                 const isAdmin = adminRooms.has(room.id);
                 return (
-                  <Card key={room.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-10 w-10">
-                          {room.profile_icon ? (
-                            <AvatarImage src={room.profile_icon} alt={room.name} />
-                          ) : (
-                            <AvatarFallback>
-                              {room.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <CardTitle>{room.name}</CardTitle>
-                          <CardDescription>
-                            Created {new Date(room.created_at).toLocaleDateString()}
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {room.description && (
-                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                          {room.description}
-                        </p>
-                      )}
-                      
-                      {isMember && isAdmin && (
-                        <div className="flex items-center space-x-2 mb-3">
-                          <div className="flex-1 bg-muted px-3 py-2 rounded text-sm">
-                            Room Code: <span className="font-mono">{room.code}</span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => copyRoomCode(room.code)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                      <div className="mt-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${isMember ? 'bg-green-500/10 text-green-600' : 'bg-blue-500/10 text-blue-600'}`}>
-                          {isMember ? (isAdmin ? 'Admin' : 'Member') : 'Not Joined'}
-                        </span>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button 
-                        className="w-full" 
-                        variant={isMember ? "default" : "outline"}
-                        onClick={() => handleRoomClick(room.id, room.name, isMember)}
-                      >
-                        {isMember ? (
-                          <>
-                            <Users className="mr-2 h-4 w-4" />
-                            View Room
-                          </>
-                        ) : (
-                          <>
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            Request to Join
-                          </>
-                        )}
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                  <RoomCard 
+                    key={room.id} 
+                    room={room} 
+                    onJoin={() => handleRoomClick(room.id, room.name, isMember)}
+                    onView={() => navigate(`/room/${room.id}`)}
+                    isAdmin={isAdmin}
+                  />
                 );
               })}
             </div>

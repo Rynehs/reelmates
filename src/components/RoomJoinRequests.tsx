@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Check, X } from "lucide-react";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface User {
   id: string;
@@ -36,6 +37,7 @@ const RoomJoinRequests = ({ roomId, isOpen, onClose, onRequestHandled }: RoomJoi
   const [loading, setLoading] = useState(true);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     if (isOpen) {
