@@ -7,24 +7,33 @@
   text-align: center;
 }
 
-/* Remove fixed padding that may cause horizontal overflow */
+/* Responsive container adjustments */
 @media (max-width: 640px) {
   .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
 
 /* Add responsive typography scaling */
 @media (max-width: 768px) {
   h1 {
-    font-size: 1.75rem;
-  }
-  h2 {
     font-size: 1.5rem;
   }
+  h2 {
+    font-size: 1.35rem;
+  }
   h3 {
+    font-size: 1.15rem;
+  }
+  .text-lg {
+    font-size: 1rem;
+  }
+  .text-xl {
     font-size: 1.25rem;
+  }
+  .text-2xl {
+    font-size: 1.5rem;
   }
 }
 
@@ -52,11 +61,50 @@ input, select, textarea {
 
 /* Ensure proper spacing on mobile */
 .mobile-spacing {
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
 @media (min-width: 768px) {
   .mobile-spacing {
-    padding: 2rem;
+    padding: 1.5rem;
+  }
+}
+
+/* Fix for room descriptions */
+.break-words {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Better handling of long text in various containers */
+.card-content, .dialog-content {
+  word-break: break-word;
+}
+
+/* Make buttons more compact on mobile */
+@media (max-width: 640px) {
+  .button-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .button-row button {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Improve mobile dropdown menus */
+@media (max-width: 640px) {
+  .dropdown-content {
+    max-width: 90vw;
+  }
+}
+
+/* Better touch targets on mobile */
+@media (max-width: 640px) {
+  button, a, .clickable {
+    min-height: 42px;
+    min-width: 42px;
   }
 }

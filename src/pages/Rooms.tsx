@@ -1,11 +1,11 @@
+
 import { 
   Dialog, 
   DialogContent, 
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle,
-  DialogTrigger 
+  DialogTitle
 } from "@/components/ui/dialog";
 import { 
   Card, 
@@ -29,7 +29,8 @@ import {
   UserPlus,
   ArrowRightCircle,
   PlusCircle,
-  MessageSquare
+  MessageSquare,
+  Copy
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -38,9 +39,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Room } from "@/lib/types";
 import { RoomInputCodeDialog } from "@/components/RoomInputCodeDialog";
+import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const generateRoomCode = () => {
-  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  // Generate a 6-digit alphanumeric code (excluding confusing characters like O, 0, 1, I, etc.)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array(6)
     .fill('')
     .map(() => chars.charAt(Math.floor(Math.random() * chars.length)))
@@ -65,8 +69,10 @@ const Rooms = () => {
   const [newRoomDescription, setNewRoomDescription] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
+  const [roomMemberCounts, setRoomMemberCounts] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     fetchRooms();
@@ -104,6 +110,21 @@ const Rooms = () => {
       }));
       
       setAllRooms(roomsWithMembers);
+      
+      // Fetch member counts for all rooms
+      const memberCountsMap: Record<string, number> = {};
+      await Promise.all(roomsWithMembers.map(async (room) => {
+        const { data: roomMembers, error: roomMembersError } = await supabase
+          .from('room_members')
+          .select('id')
+          .eq('room_id', room.id);
+          
+        if (!roomMembersError && roomMembers) {
+          memberCountsMap[room.id] = roomMembers.length;
+        }
+      }));
+      
+      setRoomMemberCounts(memberCountsMap);
       
       if (session?.user) {
         const { data: memberData, error: memberError } = await supabase
@@ -551,6 +572,7 @@ const Rooms = () => {
     isMember: boolean;
   }) => {
     const [showJoinRequest, setShowJoinRequest] = useState(false);
+    const memberCount = roomMemberCounts[room.id] || 0;
     
     return (
       <>
@@ -576,7 +598,7 @@ const Rooms = () => {
           
           <CardContent>
             {room.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3 break-words">
                 {room.description}
               </p>
             )}
@@ -585,11 +607,23 @@ const Rooms = () => {
               <p className="text-sm text-muted-foreground mb-2">
                 Created {new Date(room.created_at).toLocaleDateString()}
               </p>
-              {room.members && (
-                <p className="text-sm text-muted-foreground">
-                  <Users className="inline h-4 w-4 mr-1" /> 
-                  {room.members.length} member{room.members.length !== 1 ? 's' : ''}
-                </p>
+              <p className="text-sm text-muted-foreground flex items-center">
+                <Users className="h-4 w-4 mr-1" /> 
+                <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+              </p>
+              
+              {isAdmin && (
+                <div className="flex items-center mt-2">
+                  <Badge 
+                    variant="outline" 
+                    className="font-mono flex items-center gap-1 hover:bg-primary/10 cursor-pointer"
+                    onClick={() => copyRoomCode(room.code)}
+                  >
+                    <Key className="h-3 w-3" />
+                    {room.code}
+                    <Copy className="h-3 w-3 ml-1" />
+                  </Badge>
+                </div>
               )}
             </div>
             
@@ -598,16 +632,6 @@ const Rooms = () => {
                 <Button size="sm" onClick={onView}>
                   View Room
                 </Button>
-              ) : isAdmin ? (
-                <>
-                  <Button size="sm" variant="outline" onClick={onJoin}>
-                    <Key className="mr-2 h-4 w-4" />
-                    {room.code}
-                  </Button>
-                  <Button size="sm" onClick={onView}>
-                    View Room
-                  </Button>
-                </>
               ) : (
                 <>
                   <Button size="sm" variant="outline" onClick={() => setShowJoinRequest(true)}>
@@ -641,13 +665,13 @@ const Rooms = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Movie Rooms</h1>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
-                <ArrowRightCircle className="mr-2 h-4 w-4" />
+              <Button variant="outline" onClick={() => setShowCodeDialog(true)} size={isMobile ? "sm" : "default"}>
+                <ArrowRightCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
                 Join Room
               </Button>
               
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <Button onClick={() => setShowCreateDialog(true)} size={isMobile ? "sm" : "default"}>
+                <PlusCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
                 Create Room
               </Button>
             </div>

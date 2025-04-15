@@ -15,7 +15,8 @@ import {
   Heart, 
   ThumbsDown, 
   Smile, 
-  Zap 
+  Zap,
+  Filter 
 } from "lucide-react";
 import { RoomMedia } from "@/lib/types";
 import UserAvatar from "@/components/UserAvatar";
@@ -33,6 +34,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RoomMoviesListProps {
   roomId: string;
@@ -81,6 +93,12 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
   const [showAddMovie, setShowAddMovie] = useState(false);
   const [submittingReaction, setSubmittingReaction] = useState<{id: string, emoji: string} | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'votes' | 'newest'>('votes');
+  const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string>('recommendation');
+  const [showFilters, setShowFilters] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -139,12 +157,23 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
             poster_path: item.poster_path,
             user: userProfile,
             taggedUser: taggedUserProfile,
-            reactions: item.reactions || {}
+            reactions: item.reactions || {},
+            category: item.category || 'recommendation'
           };
         })
       );
 
-      setMedia(enhancedMedia as RoomMediaWithProfile[]);
+      // Sort the media based on sortOrder
+      let sortedMedia = [...enhancedMedia] as RoomMediaWithProfile[];
+      if (sortOrder === 'votes') {
+        sortedMedia.sort((a, b) => {
+          const votesA = a.votes || 0;
+          const votesB = b.votes || 0;
+          return votesB - votesA;
+        });
+      }
+
+      setMedia(sortedMedia);
     } catch (error) {
       console.error("Error fetching room media:", error);
       toast({
@@ -154,6 +183,41 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangeCategory = async (mediaId: string, category: string) => {
+    try {
+      setLoadingMediaIds(prev => new Set(prev).add(mediaId));
+      
+      const { error } = await supabase
+        .from("room_media")
+        .update({ category })
+        .eq("id", mediaId);
+
+      if (error) {
+        throw error;
+      }
+
+      fetchRoomMedia();
+      setEditingMediaId(null);
+      toast({
+        title: "Category updated",
+        description: "The media category has been updated",
+      });
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update category",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMediaIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(mediaId);
+        return newSet;
+      });
     }
   };
 
@@ -366,6 +430,10 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
     );
   };
 
+  const filteredMedia = categoryFilter 
+    ? media.filter(item => item.category === categoryFilter) 
+    : media;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -376,16 +444,77 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
 
   return (
     <div className="space-y-4">
-      {canAddMovies && (
-        <div className="flex justify-end mb-4">
-          <Button onClick={() => setShowAddMovie(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div className="flex flex-wrap gap-2">
+          <Popover open={showFilters} onOpenChange={setShowFilters}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size={isMobile ? "sm" : "default"}>
+                <Filter className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
+                Filter & Sort
+                {categoryFilter && <Badge className="ml-2 bg-primary/20">{CATEGORY_BADGES[categoryFilter as keyof typeof CATEGORY_BADGES]?.label || categoryFilter}</Badge>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Filter by Category</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge 
+                      className={`cursor-pointer ${!categoryFilter ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+                      onClick={() => setCategoryFilter(null)}
+                    >
+                      All
+                    </Badge>
+                    {Object.entries(CATEGORY_BADGES).map(([key, { label, className }]) => (
+                      <Badge 
+                        key={key}
+                        className={`cursor-pointer ${categoryFilter === key ? 'bg-primary text-primary-foreground' : className}`}
+                        onClick={() => setCategoryFilter(key)}
+                      >
+                        {label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Sort by</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant={sortOrder === 'votes' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => {
+                        setSortOrder('votes');
+                        fetchRoomMedia();
+                      }}
+                    >
+                      Most Votes
+                    </Button>
+                    <Button 
+                      variant={sortOrder === 'newest' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => {
+                        setSortOrder('newest');
+                        fetchRoomMedia();
+                      }}
+                    >
+                      Newest First
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        
+        {canAddMovies && (
+          <Button onClick={() => setShowAddMovie(true)} size={isMobile ? "sm" : "default"}>
+            <PlusCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
             Add Movie
           </Button>
-        </div>
-      )}
+        )}
+      </div>
       
-      {media.length === 0 ? (
+      {filteredMedia.length === 0 ? (
         <div className="text-center py-8">
           <Film className="h-12 w-12 mx-auto text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">No movies or shows added yet</h3>
@@ -394,7 +523,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
           </p>
         </div>
       ) : (
-        media.map((item) => (
+        filteredMedia.map((item) => (
           <Card key={item.id} className="overflow-hidden">
             <CardContent className="p-0">
               <div className="flex flex-col sm:flex-row">
@@ -423,7 +552,70 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                             {item.status}
                           </span>
                           {item.category && (
-                            <CategoryBadge category={item.category} />
+                            <div className="flex items-center gap-1">
+                              {editingMediaId === item.id ? (
+                                <Select 
+                                  value={editingCategory} 
+                                  onValueChange={(value) => setEditingCategory(value)}
+                                >
+                                  <SelectTrigger className="h-7 w-[140px]">
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectLabel>Categories</SelectLabel>
+                                      {Object.entries(CATEGORY_BADGES).map(([key, { label }]) => (
+                                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <CategoryBadge category={item.category} />
+                              )}
+                              
+                              {isAdmin && (
+                                editingMediaId === item.id ? (
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6"
+                                      onClick={() => handleChangeCategory(item.id, editingCategory)}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                                      </svg>
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-6 w-6"
+                                      onClick={() => setEditingMediaId(null)}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                      </svg>
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      setEditingMediaId(item.id);
+                                      setEditingCategory(item.category || 'recommendation');
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                    </svg>
+                                  </Button>
+                                )
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -12,14 +13,18 @@ import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomJoinRequests from "@/components/RoomJoinRequests";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Settings, PlusCircle, UserPlus } from "lucide-react";
+import { Loader2, ArrowLeft, Settings, PlusCircle, UserPlus, Upload } from "lucide-react";
 import AddMovieDialog from "@/components/AddMovieDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { FileUploadDialog } from "@/components/FileUploadDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [showAddMovie, setShowAddMovie] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
   const [userId, setUserId] = useState<string | null>(null);
@@ -27,6 +32,7 @@ const Room = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [showJoinRequests, setShowJoinRequests] = useState(false);
+  const isMobile = useIsMobile();
 
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -104,12 +110,38 @@ const Room = () => {
       
       return {
         ...roomData,
-        description: roomData.name,
+        description: roomData.description || roomData.name,
         settings: settingsData || { allow_member_movie_add: true }
       };
     },
     enabled: !!roomId && !!userId,
   });
+
+  const handleProfileUpdate = async (url: string) => {
+    if (!roomId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ profile_icon: url })
+        .eq('id', roomId);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Profile updated",
+        description: "Room profile image has been updated"
+      });
+      
+      refreshData();
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Error updating room profile",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -154,7 +186,7 @@ const Room = () => {
       
       <div className="container mx-auto px-4 py-4 md:py-6 flex-1 flex flex-col">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div>
+          <div className="flex items-center gap-4">
             <Button asChild variant="outline" size="sm" className="mb-2">
               <Link to="/rooms">
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -162,16 +194,48 @@ const Room = () => {
               </Link>
             </Button>
             
-            <h1 className="text-2xl font-bold md:text-3xl">{roomData.name}</h1>
-            <p className="text-muted-foreground">{roomData.description}</p>
+            <div className="flex items-center gap-4">
+              {isAdmin && (
+                <div 
+                  className="relative cursor-pointer" 
+                  onClick={() => setIsUploadOpen(true)}
+                >
+                  <Avatar className="h-12 w-12 border-2 border-primary/20">
+                    {roomData.profile_icon ? (
+                      <AvatarImage src={roomData.profile_icon} alt={roomData.name} />
+                    ) : (
+                      <AvatarFallback>
+                        {roomData.name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 border border-border">
+                    <Upload className="h-3 w-3" />
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <h1 className="text-2xl font-bold md:text-3xl">{roomData.name}</h1>
+                <p className="text-muted-foreground text-sm md:text-base">{roomData.description}</p>
+                {isAdmin && (
+                  <div className="flex items-center mt-1">
+                    <p className="text-xs bg-muted px-2 py-1 rounded-md">
+                      Room Code: <span className="font-mono font-bold">{roomData.code}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isAdmin && pendingRequests > 0 && (
               <Button
                 variant="outline"
                 onClick={() => setShowJoinRequests(true)}
                 className="mt-2 md:mt-0"
+                size={isMobile ? "sm" : "default"}
               >
                 <UserPlus className="mr-2 h-4 w-4" />
                 Join Requests
@@ -185,6 +249,7 @@ const Room = () => {
               <Button 
                 onClick={() => setShowAddMovie(true)}
                 className="mt-2 md:mt-0"
+                size={isMobile ? "sm" : "default"}
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Movie
@@ -196,6 +261,7 @@ const Room = () => {
                 variant="outline" 
                 onClick={() => setIsSettingsOpen(true)}
                 className="mt-2 md:mt-0"
+                size={isMobile ? "sm" : "default"}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Room Settings
@@ -269,6 +335,17 @@ const Room = () => {
           isOpen={showJoinRequests}
           onClose={() => setShowJoinRequests(false)}
           onRequestHandled={refreshData}
+        />
+      )}
+
+      {roomId && isAdmin && (
+        <FileUploadDialog
+          roomId={roomId}
+          isOpen={isUploadOpen}
+          onClose={() => setIsUploadOpen(false)}
+          currentProfileIcon={roomData.profile_icon}
+          roomName={roomData.name}
+          onImageUploaded={handleProfileUpdate}
         />
       )}
     </div>
