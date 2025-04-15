@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { classNames } from "@/lib/utils";
 
 interface RoomMoviesListProps {
   roomId: string;
@@ -221,42 +221,95 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
     }
   };
 
-  const handleVote = async (mediaId: string) => {
+  const handleVote = async (mediaId: string, voteType: 'up' | 'down') => {
     try {
       setLoadingMediaIds(prev => new Set(prev).add(mediaId));
       
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "You must be logged in to vote",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const { data: mediaData, error: fetchError } = await supabase
         .from("room_media")
-        .select('votes')
+        .select('votes, reactions')
         .eq("id", mediaId)
         .single();
       
-      if (error) {
-        throw error;
-      }
+      if (fetchError) throw fetchError;
       
-      const currentVotes = data.votes || 0;
-      const newVotes = currentVotes + 1;
+      const currentVotes = mediaData.votes || 0;
+      const currentReactions = mediaData.reactions || {};
+      const userId = session.user.id;
+      
+      // Check if user has already voted
+      const hasUpvoted = currentReactions.upvote?.includes(userId);
+      const hasDownvoted = currentReactions.downvote?.includes(userId);
+      
+      let newVotes = currentVotes;
+      let newReactions = { ...currentReactions };
+      
+      if (voteType === 'up') {
+        if (hasUpvoted) {
+          // Remove upvote
+          newVotes--;
+          newReactions.upvote = newReactions.upvote.filter((id: string) => id !== userId);
+        } else {
+          // Add upvote
+          newVotes++;
+          if (!newReactions.upvote) newReactions.upvote = [];
+          newReactions.upvote.push(userId);
+          
+          // Remove downvote if exists
+          if (hasDownvoted) {
+            newVotes++;
+            newReactions.downvote = newReactions.downvote.filter((id: string) => id !== userId);
+          }
+        }
+      } else {
+        if (hasDownvoted) {
+          // Remove downvote
+          newVotes++;
+          newReactions.downvote = newReactions.downvote.filter((id: string) => id !== userId);
+        } else {
+          // Add downvote
+          newVotes--;
+          if (!newReactions.downvote) newReactions.downvote = [];
+          newReactions.downvote.push(userId);
+          
+          // Remove upvote if exists
+          if (hasUpvoted) {
+            newVotes--;
+            newReactions.upvote = newReactions.upvote.filter((id: string) => id !== userId);
+          }
+        }
+      }
       
       const { error: updateError } = await supabase
         .from("room_media")
-        .update({ votes: newVotes })
+        .update({ 
+          votes: newVotes,
+          reactions: newReactions
+        })
         .eq("id", mediaId);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       fetchRoomMedia();
       toast({
-        title: "Vote cast",
-        description: "Your vote has been recorded",
+        title: "Vote recorded",
+        description: `Your ${voteType}vote has been recorded`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error voting for media:", error);
       toast({
         title: "Error",
-        description: "Failed to cast vote",
+        description: "Failed to record vote",
         variant: "destructive",
       });
     } finally {
@@ -668,37 +721,41 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                   
                   <div className="mt-4 flex flex-wrap gap-2">
                     {item.status !== 'watched' && (
-                      <>
+                      <div className="flex gap-2">
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleVote(item.id)}
+                          onClick={() => handleVote(item.id, 'up')}
                           disabled={loadingMediaIds.has(item.id)}
+                          className={classNames({
+                            'bg-primary/10': item.reactions?.upvote?.includes(currentUserId || '')
+                          })}
                         >
                           {loadingMediaIds.has(item.id) ? (
                             <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                           ) : (
                             <ThumbsUp className="mr-2 h-3 w-3" />
                           )}
-                          Vote
+                          Upvote
                         </Button>
                         
-                        {isAdmin && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleMarkAsWatched(item.id)}
-                            disabled={loadingMediaIds.has(item.id)}
-                          >
-                            {loadingMediaIds.has(item.id) ? (
-                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            ) : (
-                              <Eye className="mr-2 h-3 w-3" />
-                            )}
-                            Mark Watched
-                          </Button>
-                        )}
-                      </>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleVote(item.id, 'down')}
+                          disabled={loadingMediaIds.has(item.id)}
+                          className={classNames({
+                            'bg-destructive/10': item.reactions?.downvote?.includes(currentUserId || '')
+                          })}
+                        >
+                          {loadingMediaIds.has(item.id) ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          ) : (
+                            <ThumbsDown className="mr-2 h-3 w-3" />
+                          )}
+                          Downvote
+                        </Button>
+                      </div>
                     )}
                     
                     {/* Enhanced React Button Section - All users can react */}
