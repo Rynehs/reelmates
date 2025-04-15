@@ -23,6 +23,12 @@ const RoomMembersList = ({ roomId, isAdmin, onRefresh }: RoomMembersListProps) =
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user?.id || null);
+    };
+    
+    checkAuth();
     fetchRoomMembers();
   }, [roomId]);
 

@@ -53,14 +53,12 @@ interface RoomMoviesListProps {
   canAddMovies?: boolean;
 }
 
-// Define a simpler interface for user profiles from Supabase
 interface UserProfile {
   id: string;
   username?: string | null;
   avatar_url?: string | null;
 }
 
-// Create a new interface for the room media with user information
 interface RoomMediaWithProfile extends Omit<RoomMedia, 'user'> {
   user?: UserProfile;
   taggedUser?: UserProfile;
@@ -125,7 +123,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
 
       const enhancedMedia = await Promise.all(
         data.map(async (item: any) => {
-          // Fetch the user who added the media
           const { data: adderProfileData, error: adderProfileError } = await supabase
             .from("profiles")
             .select("id, username, avatar_url")
@@ -137,7 +134,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
             userProfile = adderProfileData;
           }
 
-          // Fetch the tagged user if there is one
           let taggedUserProfile: UserProfile | undefined;
           if (item.tagged_member_id) {
             const { data: taggedProfileData, error: taggedProfileError } = await supabase
@@ -163,7 +159,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         })
       );
 
-      // Sort the media based on sortOrder
       let sortedMedia = [...enhancedMedia] as RoomMediaWithProfile[];
       if (sortOrder === 'votes') {
         sortedMedia.sort((a, b) => {
@@ -244,10 +239,9 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
       if (fetchError) throw fetchError;
       
       const currentVotes = mediaData.votes || 0;
-      const currentReactions = mediaData.reactions || {};
+      const currentReactions = mediaData.reactions as Record<string, string[]> || {};
       const userId = session.user.id;
       
-      // Check if user has already voted
       const hasUpvoted = currentReactions.upvote?.includes(userId);
       const hasDownvoted = currentReactions.downvote?.includes(userId);
       
@@ -256,36 +250,30 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
       
       if (voteType === 'up') {
         if (hasUpvoted) {
-          // Remove upvote
           newVotes--;
-          newReactions.upvote = newReactions.upvote.filter((id: string) => id !== userId);
+          newReactions.upvote = newReactions.upvote.filter(id => id !== userId);
         } else {
-          // Add upvote
           newVotes++;
           if (!newReactions.upvote) newReactions.upvote = [];
           newReactions.upvote.push(userId);
           
-          // Remove downvote if exists
           if (hasDownvoted) {
             newVotes++;
-            newReactions.downvote = newReactions.downvote.filter((id: string) => id !== userId);
+            newReactions.downvote = newReactions.downvote.filter(id => id !== userId);
           }
         }
       } else {
         if (hasDownvoted) {
-          // Remove downvote
           newVotes++;
-          newReactions.downvote = newReactions.downvote.filter((id: string) => id !== userId);
+          newReactions.downvote = newReactions.downvote.filter(id => id !== userId);
         } else {
-          // Add downvote
           newVotes--;
           if (!newReactions.downvote) newReactions.downvote = [];
           newReactions.downvote.push(userId);
           
-          // Remove upvote if exists
           if (hasUpvoted) {
             newVotes--;
-            newReactions.upvote = newReactions.upvote.filter((id: string) => id !== userId);
+            newReactions.upvote = newReactions.upvote.filter(id => id !== userId);
           }
         }
       }
@@ -337,7 +325,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
       
       const userId = session.user.id;
       
-      // First, get the current reactions
       const { data, error } = await supabase
         .from("room_media")
         .select('reactions')
@@ -348,31 +335,24 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         throw error;
       }
       
-      // Update the reactions object
       const currentReactions = data.reactions || {};
       
-      // If the emoji key doesn't exist yet, create it
       if (!currentReactions[emoji]) {
         currentReactions[emoji] = [];
       }
       
-      // Check if the user has already reacted with this emoji
       const userIndex = currentReactions[emoji].indexOf(userId);
       
       if (userIndex === -1) {
-        // User hasn't reacted with this emoji, add them
         currentReactions[emoji].push(userId);
       } else {
-        // User has already reacted with this emoji, remove them (toggle)
         currentReactions[emoji] = currentReactions[emoji].filter((id: string) => id !== userId);
         
-        // If no users left for this emoji, clean up the empty array
         if (currentReactions[emoji].length === 0) {
           delete currentReactions[emoji];
         }
       }
       
-      // Update the media record with the new reactions
       const { error: updateError } = await supabase
         .from("room_media")
         .update({ reactions: currentReactions })
@@ -758,7 +738,6 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
                       </div>
                     )}
                     
-                    {/* Enhanced React Button Section - All users can react */}
                     <div className="flex gap-2">
                       {Object.entries(REACTION_EMOJIS).map(([emoji, icon]) => {
                         const hasReacted = isUserReacted(item.reactions || {}, emoji);
