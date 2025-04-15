@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -201,11 +200,11 @@ const Room = () => {
                   onClick={() => setIsUploadOpen(true)}
                 >
                   <Avatar className="h-12 w-12 border-2 border-primary/20">
-                    {roomData.profile_icon ? (
+                    {roomData?.profile_icon ? (
                       <AvatarImage src={roomData.profile_icon} alt={roomData.name} />
                     ) : (
                       <AvatarFallback>
-                        {roomData.name.substring(0, 2).toUpperCase()}
+                        {roomData?.name.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     )}
                   </Avatar>
@@ -343,8 +342,8 @@ const Room = () => {
           roomId={roomId}
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
-          currentProfileIcon={roomData.profile_icon}
-          roomName={roomData.name}
+          currentProfileIcon={roomData?.profile_icon}
+          roomName={roomData?.name || ''}
           onImageUploaded={handleProfileUpdate}
         />
       )}
