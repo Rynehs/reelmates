@@ -10,7 +10,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -52,7 +52,7 @@ export function RoomInputCodeDialog({ isOpen, onClose }: RoomInputCodeDialogProp
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select('id, name')
-        .eq('code', code)
+        .eq('code', code.toUpperCase())
         .single();
       
       if (roomError) {
@@ -108,6 +108,13 @@ export function RoomInputCodeDialog({ isOpen, onClose }: RoomInputCodeDialogProp
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow letters and numbers, convert to uppercase
+    const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    // Limit to 6 characters
+    setCode(value.slice(0, 6));
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -118,16 +125,16 @@ export function RoomInputCodeDialog({ isOpen, onClose }: RoomInputCodeDialogProp
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center py-6">
-          <InputOTP maxLength={6} value={code} onChange={setCode}>
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
+          <Input
+            className="text-center tracking-widest text-2xl uppercase font-mono max-w-[200px]"
+            value={code}
+            onChange={handleInputChange}
+            maxLength={6}
+            placeholder="XXXXXX"
+          />
+          <p className="mt-2 text-sm text-muted-foreground">
+            Enter the 6-character alphanumeric code
+          </p>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>

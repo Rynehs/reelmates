@@ -84,6 +84,23 @@ export function FileUploadDialog({
       const fileName = `${roomId}-${Date.now()}.${fileExt}`;
       const filePath = `room-profile-pics/${fileName}`;
 
+      // Check if current user is admin of the room to verify permissions
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error("You must be logged in to upload images");
+      }
+      
+      const { data: memberData, error: memberError } = await supabase
+        .from('room_members')
+        .select('role')
+        .eq('room_id', roomId)
+        .eq('user_id', session.user.id)
+        .single();
+        
+      if (memberError || !memberData || memberData.role !== 'admin') {
+        throw new Error("Only room admins can upload profile images");
+      }
+
       // Check if 'room-profile-pics' bucket exists, create if it doesn't
       const { data: buckets } = await supabase
         .storage
@@ -92,6 +109,7 @@ export function FileUploadDialog({
       const roomPicsBucket = buckets?.find(b => b.name === 'room-profile-pics');
       
       if (!roomPicsBucket) {
+        console.log("Creating room-profile-pics bucket...");
         const { error: bucketError } = await supabase
           .storage
           .createBucket('room-profile-pics', {
@@ -106,7 +124,9 @@ export function FileUploadDialog({
       const { error: uploadError } = await supabase
         .storage
         .from('room-profile-pics')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
