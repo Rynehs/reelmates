@@ -293,7 +293,7 @@ const RoomMoviesList = ({ roomId, isAdmin, onRefresh, canAddMovies = false }: Ro
         title: "Vote recorded",
         description: `Your ${voteType}vote has been recorded`,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error voting for media:", error);
       toast({
         title: "Error",
