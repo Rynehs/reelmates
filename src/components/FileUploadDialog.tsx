@@ -79,10 +79,27 @@ export function FileUploadDialog({
 
     setIsUploading(true);
     try {
+      // Check if current user is admin of the room to verify permissions
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error("You must be logged in to upload images");
+      }
+      
+      const { data: memberData, error: memberError } = await supabase
+        .from('room_members')
+        .select('role')
+        .eq('room_id', roomId)
+        .eq('user_id', session.user.id)
+        .single();
+        
+      if (memberError || !memberData || memberData.role !== 'admin') {
+        throw new Error("Only room admins can upload profile images");
+      }
+
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${roomId}-${Date.now()}.${fileExt}`;
-      const filePath = `room-profile-pics/${fileName}`;
+      const filePath = `${fileName}`;
 
       // Upload the file
       const { error: uploadError } = await supabase

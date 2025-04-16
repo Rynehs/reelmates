@@ -16,6 +16,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   try {
     const { data: buckets } = await supabase.storage.listBuckets();
     const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+    const roomProfileBucketExists = buckets?.some(bucket => bucket.name === 'room-profile-pics');
     
     if (!avatarBucketExists) {
       console.log('Creating avatars bucket...');
@@ -26,7 +27,15 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         fileSizeLimit: 1024 * 1024 * 2 // 2MB
       });
     }
+    
+    if (!roomProfileBucketExists) {
+      console.log('Creating room-profile-pics bucket...');
+      await supabase.storage.createBucket('room-profile-pics', {
+        public: true,
+        fileSizeLimit: 1024 * 1024 * 2 // 2MB
+      });
+    }
   } catch (error) {
-    console.error('Error checking/creating avatars bucket:', error);
+    console.error('Error checking/creating storage buckets:', error);
   }
 })();
