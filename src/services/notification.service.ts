@@ -106,6 +106,7 @@ export function subscribeToNotifications(userId: string, onNewNotification: (not
         filter: `user_id=eq.${userId}`
       }, 
       payload => {
+        console.log('New notification received:', payload);
         const newNotification: Notification = {
           id: payload.new.id,
           userId: payload.new.user_id,

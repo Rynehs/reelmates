@@ -1,7 +1,7 @@
 
 import React, { createContext, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Bell } from "lucide-react";
+import { Bell, MessageCircle, Film, Users, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Notification, NotificationsContextType } from "@/types/notification.types";
 import { 
@@ -28,19 +28,41 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
+        console.log("Initializing notifications for user:", session.user.id);
         const notificationData = await fetchNotifications();
+        console.log("Fetched notifications:", notificationData.length);
         setNotifications(notificationData);
         setUnreadCount(notificationData.filter(n => !n.read).length);
 
         // Set up real-time subscription
         channel = subscribeToNotifications(session.user.id, (newNotification) => {
+          console.log("Received new notification:", newNotification);
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
+
+          // Get the appropriate icon based on notification type
+          let icon;
+          switch (newNotification.type) {
+            case "message":
+              icon = <MessageCircle className="h-4 w-4" />;
+              break;
+            case "movie":
+              icon = <Film className="h-4 w-4" />;
+              break;
+            case "room":
+              icon = <Users className="h-4 w-4" />;
+              break;
+            case "room_request":
+              icon = <UserPlus className="h-4 w-4" />;
+              break;
+            default:
+              icon = <Bell className="h-4 w-4" />;
+          }
 
           toast({
             title: newNotification.title,
             description: newNotification.message,
-            action: <Bell className="h-4 w-4" />
+            action: icon
           });
         });
       } catch (error) {
@@ -105,6 +127,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addNotification = async (notification: Omit<Notification, "id" | "createdAt" | "userId" | "read">) => {
     try {
+      console.log("Adding notification:", notification);
       await createNotification(notification);
       // The realtime subscription will handle adding this to the state
     } catch (error) {
