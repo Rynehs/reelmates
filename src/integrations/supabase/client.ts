@@ -11,7 +11,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Check if "avatars" bucket exists and create it if it doesn't
+// Check if storage buckets exist and create them if they don't
 (async () => {
   try {
     const { data: buckets } = await supabase.storage.listBuckets();

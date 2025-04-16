@@ -99,13 +99,12 @@ export function FileUploadDialog({
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${roomId}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      // Upload the file
+      
+      // Upload the file - use the correct path format
       const { error: uploadError } = await supabase
         .storage
         .from('room-profile-pics')
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           upsert: true
         });
 
@@ -115,7 +114,7 @@ export function FileUploadDialog({
       const { data } = supabase
         .storage
         .from('room-profile-pics')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       // Return the URL to the parent component
       onImageUploaded(data.publicUrl);
