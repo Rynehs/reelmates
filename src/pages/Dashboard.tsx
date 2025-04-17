@@ -44,6 +44,11 @@ const Dashboard = () => {
       return data.results;
     },
   });
+
+  // Create empty movie lists for each status
+  const watchedMovies = [];
+  const toWatchMovies = [];
+  const favoriteMovies = [];
   
   return (
     <div className="min-h-screen bg-background">
@@ -97,7 +102,7 @@ const Dashboard = () => {
               <p>Loading trending movies...</p>
             </div>
           ) : (
-            <MovieCarousel movies={trendingMovies} />
+            <MovieCarousel movies={trendingMovies} title="Trending Today" />
           )}
         </section>
         
@@ -113,7 +118,12 @@ const Dashboard = () => {
               <p>Loading popular movies...</p>
             </div>
           ) : (
-            <MovieList movies={popularMovies.slice(0, 6)} />
+            <MovieList
+              watchedMovies={watchedMovies}
+              toWatchMovies={popularMovies.slice(0, 6)}
+              favoriteMovies={favoriteMovies}
+              isLoading={isPopularLoading}
+            />
           )}
         </section>
       </main>
