@@ -148,6 +148,7 @@ const RoomJoinRequests = ({ roomId, isOpen, onClose, onRequestHandled }: RoomJoi
         ? `Your request to join "${roomData?.name || 'the room'}" has been approved.`
         : `Your request to join "${roomData?.name || 'the room'}" has been declined.`;
       
+      // Create notification directly in the database
       await supabase
         .from('notifications')
         .insert({

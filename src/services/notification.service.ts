@@ -97,10 +97,11 @@ export async function createNotification(notification: {
   message: string;
   type: "message" | "movie" | "room" | "room_request" | "system";
   entityId?: string;
+  userId?: string; // Added userId parameter for direct targeting
 }) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user.id || MOCK_USER_ID;
+    const userId = notification.userId || session?.user.id || MOCK_USER_ID;
 
     console.log("Creating notification for user:", userId, notification);
 
@@ -164,6 +165,30 @@ export function subscribeToNotifications(userId: string, onNewNotification: (not
     });
     
   return channel;
+}
+
+// Function to create a movie tag notification
+export async function createMovieTagNotification(userId: string, movieTitle: string, roomName: string, roomId: string) {
+  return createNotification({
+    userId: userId,
+    title: "You've been tagged in a movie",
+    message: `You've been tagged to watch "${movieTitle}" in the room "${roomName}"`,
+    type: "movie",
+    entityId: roomId
+  });
+}
+
+// Function to create a room request notification
+export async function createRoomRequestNotification(userId: string, roomName: string, roomId: string, approved: boolean) {
+  return createNotification({
+    userId: userId,
+    title: approved ? "Room Join Request Approved" : "Room Join Request Declined",
+    message: approved 
+      ? `Your request to join "${roomName}" has been approved.` 
+      : `Your request to join "${roomName}" has been declined.`,
+    type: "room_request",
+    entityId: roomId
+  });
 }
 
 // Test function to create a demo notification
