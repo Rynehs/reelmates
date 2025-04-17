@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
@@ -6,8 +7,9 @@ import { MovieCarousel } from "@/components/MovieCarousel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Film, Search } from "lucide-react";
+import { Film, Search, UserPlus } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
+import { fetchTrendingMovies, fetchPopularMovies, discoverMovies } from "@/lib/tmdb";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -21,12 +23,8 @@ const Dashboard = () => {
   const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
     queryKey: ['trendingMovies'],
     queryFn: async () => {
-      const response = await fetch(`https://api.themoviedb.org/3/trending/movie/day?api_key=2dca580c2a14b55200e784d157207b4d`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch trending movies');
-      }
-      const data = await response.json();
-      return data.results;
+      const response = await fetchTrendingMovies();
+      return response.results;
     },
   });
 
@@ -34,12 +32,26 @@ const Dashboard = () => {
   const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
     queryKey: ['popularMovies'],
     queryFn: async () => {
-      const response = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=2dca580c2a14b55200e784d157207b4d`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch popular movies');
-      }
-      const data = await response.json();
-      return data.results;
+      const response = await fetchPopularMovies();
+      return response.results;
+    },
+  });
+
+  // Fetch action movies
+  const { data: actionMovies = [], isLoading: isActionLoading } = useQuery({
+    queryKey: ['actionMovies'],
+    queryFn: async () => {
+      const response = await discoverMovies({ with_genres: '28' });
+      return response.results;
+    },
+  });
+
+  // Fetch comedy movies
+  const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery({
+    queryKey: ['comedyMovies'],
+    queryFn: async () => {
+      const response = await discoverMovies({ with_genres: '35' });
+      return response.results;
     },
   });
 
@@ -76,7 +88,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Your Activity</CardTitle>
-              <Plus className="h-4 w-4 text-muted-foreground" />
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-xl font-bold">Get Started</div>
@@ -91,16 +103,15 @@ const Dashboard = () => {
         </section>
 
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Trending Today</h2>
-          </div>
-          {isTrendingLoading ? (
-            <div className="flex justify-center py-10">
-              <p>Loading trending movies...</p>
-            </div>
-          ) : (
-            <MovieCarousel movies={trendingMovies} title="Trending Today" />
-          )}
+          <MovieCarousel movies={trendingMovies} title="Trending Today" />
+        </section>
+
+        <section className="mb-8">
+          <MovieCarousel movies={actionMovies} title="Action Movies" />
+        </section>
+        
+        <section className="mb-8">
+          <MovieCarousel movies={comedyMovies} title="Comedy Movies" />
         </section>
         
         <section>

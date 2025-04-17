@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, MessageCircle, Film, Users, UserPlus } from "lucide-react";
@@ -40,37 +41,46 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         setUnreadCount(notificationData.filter(n => !n.read).length);
 
         // Set up real-time subscription
-        channel = subscribeToNotifications(userId, (newNotification) => {
-          console.log("Received new notification in context:", newNotification);
-          
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
+        channel = supabase
+          .channel(`public:notifications:user_id=eq.${userId}`)
+          .on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          }, (payload) => {
+            console.log("Received new notification:", payload);
+            const newNotification = payload.new as Notification;
+            
+            setNotifications(prev => [newNotification, ...prev]);
+            setUnreadCount(prev => prev + 1);
 
-          // Get the appropriate icon based on notification type
-          let icon;
-          switch (newNotification.type) {
-            case "message":
-              icon = <MessageCircle className="h-4 w-4" />;
-              break;
-            case "movie":
-              icon = <Film className="h-4 w-4" />;
-              break;
-            case "room":
-              icon = <Users className="h-4 w-4" />;
-              break;
-            case "room_request":
-              icon = <UserPlus className="h-4 w-4" />;
-              break;
-            default:
-              icon = <Bell className="h-4 w-4" />;
-          }
+            // Get the appropriate icon based on notification type
+            let icon;
+            switch (newNotification.type) {
+              case "message":
+                icon = <MessageCircle className="h-4 w-4" />;
+                break;
+              case "movie":
+                icon = <Film className="h-4 w-4" />;
+                break;
+              case "room":
+                icon = <Users className="h-4 w-4" />;
+                break;
+              case "room_request":
+                icon = <UserPlus className="h-4 w-4" />;
+                break;
+              default:
+                icon = <Bell className="h-4 w-4" />;
+            }
 
-          toast({
-            title: newNotification.title,
-            description: newNotification.message,
-            action: icon
-          });
-        });
+            toast({
+              title: newNotification.title,
+              description: newNotification.message,
+              action: icon
+            });
+          })
+          .subscribe();
 
         setIsInitialized(true);
       } catch (error) {
