@@ -17,4 +17,5 @@ export interface NotificationsContextType {
   markAllAsRead: () => Promise<void>;
   removeNotification: (id: string) => Promise<void>;
   addNotification: (notification: Omit<Notification, "id" | "createdAt" | "userId" | "read">) => Promise<void>;
+  isInitialized: boolean;
 }

@@ -1,168 +1,120 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
-import { 
-  fetchMovieDetails, 
-  fetchTVShowDetails, 
-  fetchTrendingMovies,
-  fetchPopularMovies,
-  discoverMovies 
-} from "@/lib/tmdb";
-import { Movie, TVShow, UserMedia, MediaItem } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
 import { MovieCarousel } from "@/components/MovieCarousel";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Film, Search, Plus } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import CreateTestNotificationButton from '@/components/CreateTestNotificationButton';
 
 const Dashboard = () => {
-  const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
-  const [toWatchMovies, setToWatchMovies] = useState<Movie[]>([]);
-  const [favoriteMovies, setFavoriteMovies] = useState<Movie[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [actionMovies, setActionMovies] = useState<Movie[]>([]);
-  const [comedyMovies, setComedyMovies] = useState<Movie[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
-  
-  useEffect(() => {
-    const fetchUserMovies = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
-        
-        const { data: userMediaFromDB, error } = await supabase
-          .from("user_movies")
-          .select("*")
-          .eq("user_id", session.user.id);
-          
-        if (error) throw error;
-        
-        const userMedia: UserMedia[] = userMediaFromDB.map(item => ({
-          id: item.id,
-          user_id: item.user_id,
-          media_id: item.movie_id,
-          media_type: (item.media_type || 'movie') as 'movie' | 'tv',
-          status: item.status as 'watched' | 'to_watch' | 'favorite',
-          rating: item.rating,
-          notes: item.notes,
-          created_at: item.created_at
-        }));
-        
-        const watchedData = userMedia.filter(item => item.status === "watched");
-        const toWatchData = userMedia.filter(item => item.status === "to_watch");
-        const favoriteData = userMedia.filter(item => item.status === "favorite");
-        
-        const fetchDetails = async (item: UserMedia) => {
-          try {
-            if (item.media_type === 'movie') {
-              const movieDetails = await fetchMovieDetails(item.media_id);
-              return {
-                id: movieDetails.id,
-                title: movieDetails.title,
-                poster_path: movieDetails.poster_path,
-                backdrop_path: movieDetails.backdrop_path,
-                release_date: movieDetails.release_date,
-                vote_average: movieDetails.vote_average,
-                overview: movieDetails.overview,
-                genre_ids: movieDetails.genres?.map(g => g.id) || [],
-                media_type: 'movie' as const
-              } as Movie;
-            } else {
-              const tvDetails = await fetchTVShowDetails(item.media_id);
-              return {
-                id: tvDetails.id,
-                title: tvDetails.name,
-                poster_path: tvDetails.poster_path,
-                backdrop_path: tvDetails.backdrop_path,
-                release_date: tvDetails.first_air_date,
-                vote_average: tvDetails.vote_average,
-                overview: tvDetails.overview,
-                genre_ids: tvDetails.genres?.map(g => g.id) || [],
-                media_type: 'movie' as const
-              } as Movie;
-            }
-          } catch (error) {
-            console.error(`Failed to fetch details for ${item.media_type} ${item.media_id}:`, error);
-            return null;
-          }
-        };
-        
-        const watched = await Promise.all(watchedData.map(fetchDetails));
-        const toWatch = await Promise.all(toWatchData.map(fetchDetails));
-        const favorites = await Promise.all(favoriteData.map(fetchDetails));
-        
-        setWatchedMovies(watched.filter(Boolean) as Movie[]);
-        setToWatchMovies(toWatch.filter(Boolean) as Movie[]);
-        setFavoriteMovies(favorites.filter(Boolean) as Movie[]);
-      } catch (error: any) {
-        toast({ title: "Failed to fetch movies", description: error.message, variant: "destructive" });
-      } finally {
-        setIsLoading(false);
+
+  const goToSearch = () => {
+    navigate('/search');
+  };
+
+  // Fetch trending movies
+  const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
+    queryKey: ['trendingMovies'],
+    queryFn: async () => {
+      const response = await fetch(`https://api.themoviedb.org/3/trending/movie/day?api_key=2dca580c2a14b55200e784d157207b4d`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch trending movies');
       }
-    };
-    
-    const fetchMovieCategories = async () => {
-      try {
-        // Fetch trending movies
-        const trending = await fetchTrendingMovies();
-        setTrendingMovies(trending.results as Movie[]);
-        
-        // Fetch popular movies
-        const popular = await fetchPopularMovies();
-        setPopularMovies(popular.results as Movie[]);
-        
-        // Fetch action movies (genre id 28)
-        const action = await discoverMovies({ with_genres: '28' });
-        setActionMovies(action.results as Movie[]);
-        
-        // Fetch comedy movies (genre id 35)
-        const comedy = await discoverMovies({ with_genres: '35' });
-        setComedyMovies(comedy.results as Movie[]);
-        
-      } catch (error) {
-        console.error("Failed to fetch movie categories:", error);
+      const data = await response.json();
+      return data.results;
+    },
+  });
+
+  // Fetch popular movies
+  const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
+    queryKey: ['popularMovies'],
+    queryFn: async () => {
+      const response = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=2dca580c2a14b55200e784d157207b4d`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch popular movies');
       }
-    };
-    
-    fetchUserMovies();
-    fetchMovieCategories();
-  }, [toast]);
+      const data = await response.json();
+      return data.results;
+    },
+  });
   
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <MovieList
-          watchedMovies={watchedMovies}
-          toWatchMovies={toWatchMovies}
-          favoriteMovies={favoriteMovies}
-          isLoading={isLoading}
-        />
+      
+      <main className="container mx-auto px-4 py-6">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="md:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Welcome to ReelMates</CardTitle>
+              <Film className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">Track and Share Movies with Friends</div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Discover new movies, create watch parties, and discuss your favorite films.
+              </p>
+              <div className="flex mt-4 space-x-3">
+                <Button onClick={goToSearch}>
+                  <Search className="mr-2 h-4 w-4" />
+                  Find Movies
+                </Button>
+                <CreateTestNotificationButton />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Your Activity</CardTitle>
+              <Plus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">Get Started</div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Join rooms or create your own to share movies with friends.
+              </p>
+              <Button className="mt-4 w-full" variant="outline" onClick={() => navigate('/rooms')}>
+                Browse Rooms
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Trending Today</h2>
+          </div>
+          {isTrendingLoading ? (
+            <div className="flex justify-center py-10">
+              <p>Loading trending movies...</p>
+            </div>
+          ) : (
+            <MovieCarousel movies={trendingMovies} />
+          )}
+        </section>
         
-        {/* Netflix-style Movie Categories */}
-        <section className="mt-8 space-y-2">
-          <h2 className="text-2xl font-semibold mb-4">Explore Movies</h2>
-          
-          <MovieCarousel 
-            movies={trendingMovies} 
-            title="Trending Now" 
-          />
-          
-          <MovieCarousel 
-            movies={popularMovies} 
-            title="Popular Movies" 
-          />
-          
-          <MovieCarousel 
-            movies={actionMovies} 
-            title="Action & Adventure" 
-          />
-          
-          <MovieCarousel 
-            movies={comedyMovies} 
-            title="Comedy" 
-          />
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Popular Movies</h2>
+            <Button variant="outline" size="sm" onClick={goToSearch}>
+              View All
+            </Button>
+          </div>
+          {isPopularLoading ? (
+            <div className="flex justify-center py-10">
+              <p>Loading popular movies...</p>
+            </div>
+          ) : (
+            <MovieList movies={popularMovies.slice(0, 6)} />
+          )}
         </section>
       </main>
     </div>

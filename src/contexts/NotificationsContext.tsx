@@ -10,14 +10,19 @@ import {
   markAllNotificationsAsRead,
   deleteNotification,
   createNotification,
-  subscribeToNotifications
+  subscribeToNotifications,
+  createDemoNotification
 } from "@/services/notification.service";
+
+// Mock user ID for testing purposes without authentication
+const MOCK_USER_ID = "test-user-123";
 
 export const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -25,18 +30,22 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const initNotifications = async () => {
       try {
+        // Get user ID - either from session or use mock ID
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        const userId = session?.user?.id || MOCK_USER_ID;
 
-        console.log("Initializing notifications for user:", session.user.id);
+        console.log("Initializing notifications for user:", userId);
+        
+        // Fetch existing notifications
         const notificationData = await fetchNotifications();
         console.log("Fetched notifications:", notificationData.length);
         setNotifications(notificationData);
         setUnreadCount(notificationData.filter(n => !n.read).length);
 
         // Set up real-time subscription
-        channel = subscribeToNotifications(session.user.id, (newNotification) => {
-          console.log("Received new notification:", newNotification);
+        channel = subscribeToNotifications(userId, (newNotification) => {
+          console.log("Received new notification in context:", newNotification);
+          
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
 
@@ -65,6 +74,16 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             action: icon
           });
         });
+
+        setIsInitialized(true);
+        
+        // Create a demo notification for testing if no notifications exist
+        if (notificationData.length === 0) {
+          console.log("No notifications found, creating a demo notification");
+          setTimeout(() => {
+            createDemoNotification();
+          }, 2000);
+        }
       } catch (error) {
         console.error("Error initializing notifications:", error);
       }
@@ -74,6 +93,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       if (channel) {
+        console.log("Cleaning up notification subscription");
         supabase.removeChannel(channel);
       }
     };
@@ -127,7 +147,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addNotification = async (notification: Omit<Notification, "id" | "createdAt" | "userId" | "read">) => {
     try {
-      console.log("Adding notification:", notification);
+      console.log("Adding notification in context:", notification);
       await createNotification(notification);
       // The realtime subscription will handle adding this to the state
     } catch (error) {
@@ -143,7 +163,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         markAsRead, 
         markAllAsRead, 
         removeNotification,
-        addNotification 
+        addNotification,
+        isInitialized
       }}
     >
       {children}

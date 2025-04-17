@@ -2,69 +2,92 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Notification } from "@/types/notification.types";
 
+// Mock user ID for testing purposes without authentication
+const MOCK_USER_ID = "test-user-123";
+
 export async function fetchNotifications() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return [];
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user.id || MOCK_USER_ID;
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", session.user.id)
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching notifications:", error);
+    if (error) {
+      console.error("Error fetching notifications:", error);
+      return [];
+    }
+
+    return data.map(item => ({
+      id: item.id,
+      userId: item.user_id,
+      title: item.title,
+      message: item.message,
+      type: item.type as "message" | "movie" | "room" | "room_request" | "system",
+      read: item.read || false,
+      entityId: item.entity_id,
+      createdAt: item.created_at
+    }));
+  } catch (error) {
+    console.error("Unexpected error in fetchNotifications:", error);
     return [];
   }
-
-  return data.map(item => ({
-    id: item.id,
-    userId: item.user_id,
-    title: item.title,
-    message: item.message,
-    type: item.type as "message" | "movie" | "room" | "room_request" | "system",
-    read: item.read || false,
-    entityId: item.entity_id,
-    createdAt: item.created_at
-  }));
 }
 
 export async function markNotificationAsRead(id: string) {
-  const { error } = await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("id", id);
+  try {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("id", id);
 
-  if (error) {
-    console.error("Error marking notification as read:", error);
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Unexpected error in markNotificationAsRead:", error);
     throw error;
   }
 }
 
 export async function markAllNotificationsAsRead() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user.id || MOCK_USER_ID;
 
-  const { error } = await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("user_id", session.user.id)
-    .eq("read", false);
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", userId)
+      .eq("read", false);
 
-  if (error) {
-    console.error("Error marking all notifications as read:", error);
+    if (error) {
+      console.error("Error marking all notifications as read:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Unexpected error in markAllNotificationsAsRead:", error);
     throw error;
   }
 }
 
 export async function deleteNotification(id: string) {
-  const { error } = await supabase
-    .from("notifications")
-    .delete()
-    .eq("id", id);
+  try {
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("id", id);
 
-  if (error) {
-    console.error("Error removing notification:", error);
+    if (error) {
+      console.error("Error removing notification:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Unexpected error in deleteNotification:", error);
     throw error;
   }
 }
@@ -75,35 +98,50 @@ export async function createNotification(notification: {
   type: "message" | "movie" | "room" | "room_request" | "system";
   entityId?: string;
 }) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("No active session");
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user.id || MOCK_USER_ID;
 
-  const { error } = await supabase
-    .from("notifications")
-    .insert({
-      user_id: session.user.id,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
-      entity_id: notification.entityId,
-      read: false
-    });
+    console.log("Creating notification for user:", userId, notification);
 
-  if (error) {
-    console.error("Error adding notification:", error);
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: userId,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        entity_id: notification.entityId,
+        read: false
+      })
+      .select();
+
+    if (error) {
+      console.error("Error adding notification:", error);
+      throw error;
+    }
+
+    console.log("Notification created successfully:", data);
+    return data;
+  } catch (error) {
+    console.error("Unexpected error in createNotification:", error);
     throw error;
   }
 }
 
 export function subscribeToNotifications(userId: string, onNewNotification: (notification: Notification) => void) {
-  return supabase
+  console.log("Subscribing to notifications for user:", userId);
+  
+  const userIdToUse = userId || MOCK_USER_ID;
+  
+  const channel = supabase
     .channel('public:notifications')
     .on('postgres_changes', 
       { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'notifications',
-        filter: `user_id=eq.${userId}`
+        filter: `user_id=eq.${userIdToUse}`
       }, 
       payload => {
         console.log('New notification received:', payload);
@@ -121,5 +159,19 @@ export function subscribeToNotifications(userId: string, onNewNotification: (not
         onNewNotification(newNotification);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log("Realtime subscription status:", status);
+    });
+    
+  return channel;
+}
+
+// Test function to create a demo notification
+export async function createDemoNotification() {
+  await createNotification({
+    title: "Demo Notification",
+    message: "This is a test notification to verify the notification system is working.",
+    type: "system",
+    entityId: "demo-123"
+  });
 }
