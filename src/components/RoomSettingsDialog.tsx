@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,12 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Image } from "lucide-react";
+import { Loader2, Image, Upload } from "lucide-react";
 import { RoomSettings } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileUploadDialog } from "./FileUploadDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AvatarPicker } from "./AvatarPicker";
 
 interface RoomSettingsDialogProps {
   roomId: string;
@@ -37,6 +38,7 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
   const [showFileUploadDialog, setShowFileUploadDialog] = useState(false);
+  const [avatarTab, setAvatarTab] = useState<"preset" | "custom">("preset");
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -44,7 +46,6 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
       
       setLoading(true);
       try {
-        // Fetch room settings
         const { data, error } = await supabase
           .from("room_settings")
           .select("*")
@@ -52,7 +53,6 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           .single();
 
         if (error) {
-          // If no settings exist, create default settings
           if (error.code === 'PGRST116') {
             const { data: newSettings, error: insertError } = await supabase
               .from("room_settings")
@@ -74,7 +74,6 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
           setSettings(data as RoomSettings);
         }
 
-        // Fetch room details for profile icon and other info
         const { data: roomData, error: roomError } = await supabase
           .from("rooms")
           .select("name, description, profile_icon")
@@ -106,7 +105,6 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Save room settings
       const { error: settingsError } = await supabase
         .from("room_settings")
         .upsert({
@@ -122,7 +120,6 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
         throw settingsError;
       }
 
-      // Save room details
       const { error: roomError } = await supabase
         .from("rooms")
         .update({
@@ -156,6 +153,10 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
 
   const handleImageUploaded = (url: string) => {
     setProfileIcon(url);
+  };
+
+  const handleSelectPresetAvatar = (avatar: string) => {
+    setProfileIcon(avatar);
   };
 
   return (
@@ -196,7 +197,7 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
             
             <div className="space-y-4">
               <Label>Room Profile Picture</Label>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 mb-4">
                 <Avatar className="h-16 w-16">
                   {profileIcon ? (
                     <AvatarImage src={profileIcon} alt="Room profile" />
@@ -206,17 +207,33 @@ const RoomSettingsDialog = ({ roomId, isOpen, onClose }: RoomSettingsDialogProps
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="flex-1">
+                <div className="text-sm text-muted-foreground">
+                  Choose a preset avatar or upload your own image
+                </div>
+              </div>
+              
+              <Tabs value={avatarTab} onValueChange={(v) => setAvatarTab(v as "preset" | "custom")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="preset">Preset Avatars</TabsTrigger>
+                  <TabsTrigger value="custom">Custom Upload</TabsTrigger>
+                </TabsList>
+                <TabsContent value="preset" className="mt-4">
+                  <AvatarPicker
+                    selectedAvatar={profileIcon}
+                    onSelect={handleSelectPresetAvatar}
+                  />
+                </TabsContent>
+                <TabsContent value="custom" className="mt-4">
                   <Button 
                     variant="outline" 
                     className="w-full"
                     onClick={() => setShowFileUploadDialog(true)}
                   >
-                    <Image className="mr-2 h-4 w-4" />
+                    <Upload className="mr-2 h-4 w-4" />
                     {profileIcon ? "Change Profile Picture" : "Upload Profile Picture"}
                   </Button>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
             
             <div className="flex items-center justify-between">

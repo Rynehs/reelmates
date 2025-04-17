@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -11,7 +10,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
-import { Loader2, Copy, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Copy, CheckCircle, Upload } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AvatarPicker } from "@/components/AvatarPicker";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +34,7 @@ const Profile = () => {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [avatarTab, setAvatarTab] = useState<"preset" | "custom">("preset");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -175,6 +177,36 @@ const Profile = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to upload avatar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSelectPresetAvatar = async (avatarUrl: string) => {
+    setIsUpdating(true);
+    try {
+      setAvatarUrl(avatarUrl);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", profile?.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast({
+        title: "Avatar updated",
+        description: "Your avatar has been updated successfully",
+      });
+    } catch (error: any) {
+      console.error("Error updating avatar:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update avatar",
         variant: "destructive",
       });
     } finally {
@@ -374,34 +406,52 @@ const Profile = () => {
               size="xl"
               showLoadingState={isUpdating}
             />
-            <div className="flex space-x-2">
-              <Input
-                type="file"
-                id="avatar-upload"
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                className="hidden"
-                onChange={handleAvatarUpload}
-                disabled={isUpdating}
-              />
-              <Label 
-                htmlFor="avatar-upload" 
-                className={`${isUpdating 
-                  ? 'bg-secondary/50' 
-                  : 'bg-secondary hover:bg-secondary/80'} text-secondary-foreground rounded-md px-4 py-2 cursor-pointer transition-colors flex items-center`}
-              >
-                {isUpdating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  "Upload New Avatar"
-                )}
-              </Label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Maximum file size: 2MB. Accepted formats: JPEG, PNG, GIF, WEBP
-            </p>
+            
+            <Tabs value={avatarTab} onValueChange={(v) => setAvatarTab(v as "preset" | "custom")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="preset">Preset Avatars</TabsTrigger>
+                <TabsTrigger value="custom">Custom Upload</TabsTrigger>
+              </TabsList>
+              <TabsContent value="preset" className="mt-4">
+                <AvatarPicker
+                  selectedAvatar={avatarUrl}
+                  onSelect={handleSelectPresetAvatar}
+                />
+              </TabsContent>
+              <TabsContent value="custom" className="mt-4">
+                <div className="flex space-x-2">
+                  <Input
+                    type="file"
+                    id="avatar-upload"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={isUpdating}
+                  />
+                  <Label 
+                    htmlFor="avatar-upload" 
+                    className={`${isUpdating 
+                      ? 'bg-secondary/50' 
+                      : 'bg-secondary hover:bg-secondary/80'} text-secondary-foreground rounded-md px-4 py-2 cursor-pointer transition-colors flex items-center w-full justify-center`}
+                  >
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload New Avatar
+                      </>
+                    )}
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Maximum file size: 2MB. Accepted formats: JPEG, PNG, GIF, WEBP
+                </p>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Username */}
