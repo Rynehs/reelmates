@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, MessageCircle, Film, Users, UserPlus } from "lucide-react";
@@ -9,9 +8,7 @@ import {
   markNotificationAsRead, 
   markAllNotificationsAsRead,
   deleteNotification,
-  createNotification,
-  subscribeToNotifications,
-  createDemoNotification
+  createNotification
 } from "@/services/notification.service";
 
 // Mock user ID for testing purposes without authentication
@@ -76,14 +73,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         });
 
         setIsInitialized(true);
-        
-        // Create a demo notification for testing if no notifications exist
-        if (notificationData.length === 0) {
-          console.log("No notifications found, creating a demo notification");
-          setTimeout(() => {
-            createDemoNotification();
-          }, 2000);
-        }
       } catch (error) {
         console.error("Error initializing notifications:", error);
       }

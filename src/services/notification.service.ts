@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Notification } from "@/types/notification.types";
 
@@ -191,12 +190,7 @@ export async function createRoomRequestNotification(userId: string, roomName: st
   });
 }
 
-// Test function to create a demo notification
+// Removing the demo notification function
 export async function createDemoNotification() {
-  await createNotification({
-    title: "Demo Notification",
-    message: "This is a test notification to verify the notification system is working.",
-    type: "system",
-    entityId: "demo-123"
-  });
+  // Function removed as per user request
 }

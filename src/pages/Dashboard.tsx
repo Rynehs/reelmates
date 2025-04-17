@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
@@ -7,9 +6,8 @@ import { MovieCarousel } from "@/components/MovieCarousel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Film, Search, Plus } from "lucide-react";
+import { Film, Search } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
-import CreateTestNotificationButton from '@/components/CreateTestNotificationButton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -71,7 +69,6 @@ const Dashboard = () => {
                   <Search className="mr-2 h-4 w-4" />
                   Find Movies
                 </Button>
-                <CreateTestNotificationButton />
               </div>
             </CardContent>
           </Card>
