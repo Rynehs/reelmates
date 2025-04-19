@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RoomChat from "@/components/RoomChat";
-import RoomMembersList from "@/components/RoomMembersList";
+import { RoomMembersList } from "@/components/RoomMembersList";
 import RoomMoviesList from "@/components/RoomMoviesList";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomJoinRequests from "@/components/RoomJoinRequests";

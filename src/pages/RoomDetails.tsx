@@ -17,7 +17,7 @@ import type { Room, RoomMember, User } from "@/lib/types";
 import AddMovieDialog from "@/components/AddMovieDialog";
 import RoomSettingsDialog from "@/components/RoomSettingsDialog";
 import RoomMoviesList from "@/components/RoomMoviesList";
-import RoomMembersList from "@/components/RoomMembersList";
+import { RoomMembersList } from "@/components/RoomMembersList";
 import RoomChat from "@/components/RoomChat";
 import RoomJoinRequests from "@/components/RoomJoinRequests";
 

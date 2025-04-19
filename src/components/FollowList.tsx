@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -65,23 +64,33 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
           currentUserFollowing = (currentFollowing || []).map(f => f.following_id);
         }
         
-        const formattedFollowers = followersData
-          ?.filter(item => item.follower)
-          .map(item => ({
-            id: item.follower.id,
-            username: item.follower.username,
-            avatar_url: item.follower.avatar_url,
-            isFollowing: currentUserFollowing.includes(item.follower.id)
-          })) || [];
-          
-        const formattedFollowing = followingData
-          ?.filter(item => item.following)
-          .map(item => ({
-            id: item.following.id,
-            username: item.following.username,
-            avatar_url: item.following.avatar_url,
-            isFollowing: currentUserFollowing.includes(item.following.id)
-          })) || [];
+        const formattedFollowers: UserProfileWithFollow[] = [];
+        if (followersData) {
+          for (const item of followersData) {
+            if (item.follower) {
+              formattedFollowers.push({
+                id: item.follower.id,
+                username: item.follower.username,
+                avatar_url: item.follower.avatar_url,
+                isFollowing: currentUserFollowing.includes(item.follower.id)
+              });
+            }
+          }
+        }
+        
+        const formattedFollowing: UserProfileWithFollow[] = [];
+        if (followingData) {
+          for (const item of followingData) {
+            if (item.following) {
+              formattedFollowing.push({
+                id: item.following.id,
+                username: item.following.username,
+                avatar_url: item.following.avatar_url,
+                isFollowing: currentUserFollowing.includes(item.following.id)
+              });
+            }
+          }
+        }
         
         setFollowers(formattedFollowers);
         setFollowing(formattedFollowing);
