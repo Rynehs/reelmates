@@ -170,7 +170,7 @@ export const RoomMembersList = ({ roomId, isAdmin, onRefresh }: RoomMembersListP
               <div key={member.id} className="flex items-center justify-between">
                 <Link 
                   to={`/user/${member.user.id}`}
-                  className="flex items-center gap-3 hover:underline"
+                  className="flex items-center gap-3 hover:bg-muted rounded-md p-2 transition-colors"
                 >
                   <UserAvatar 
                     user={{ 
