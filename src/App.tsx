@@ -11,6 +11,7 @@ import Rooms from './pages/Rooms';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
 import UserProfilePage from './pages/UserProfile';
+import MovieDetails from './pages/MovieDetails';
 import { Toaster } from "@/components/ui/toaster";
 import { NotificationsProvider } from "@/hooks/use-notifications";
 
@@ -31,6 +32,7 @@ function App() {
               <Route path="/search" element={<Search />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/user/:userId" element={<UserProfilePage />} />
+              <Route path="/movie/:id" element={<MovieDetails />} />
             </Routes>
             <Toaster />
           </NotificationsProvider>

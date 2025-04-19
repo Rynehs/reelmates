@@ -129,7 +129,7 @@ const MovieCard = ({ media, status, onClick, showActions = false }: MovieCardPro
       className="movie-card h-full flex flex-col"
       onClick={handleClick}
     >
-      <Link to={`/${mediaType}/${media.id}`} className="block flex-grow">
+      <Link to={`/${media.media_type}/${media.id}`} className="block flex-grow">
         <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg">
           <div 
             className={`absolute inset-0 bg-muted animate-pulse ${imageLoaded ? 'hidden' : 'block'}`} 

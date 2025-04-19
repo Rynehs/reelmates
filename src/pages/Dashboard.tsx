@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
@@ -104,15 +103,24 @@ const Dashboard = () => {
         </section>
 
         <section className="mb-8">
-          <MovieCarousel movies={trendingMovies} title="Trending Today" />
+          <MovieCarousel 
+            movies={trendingMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
+            title="Trending Today" 
+          />
         </section>
 
         <section className="mb-8">
-          <MovieCarousel movies={actionMovies} title="Action Movies" />
+          <MovieCarousel 
+            movies={actionMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
+            title="Action Movies" 
+          />
         </section>
         
         <section className="mb-8">
-          <MovieCarousel movies={comedyMovies} title="Comedy Movies" />
+          <MovieCarousel 
+            movies={comedyMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
+            title="Comedy Movies" 
+          />
         </section>
         
         <section>
@@ -129,7 +137,7 @@ const Dashboard = () => {
           ) : (
             <MovieList
               watchedMovies={watchedMovies}
-              toWatchMovies={popularMovies.slice(0, 6)}
+              toWatchMovies={popularMovies?.map(movie => ({...movie, media_type: 'movie'}))}
               favoriteMovies={favoriteMovies}
               isLoading={isPopularLoading}
             />
