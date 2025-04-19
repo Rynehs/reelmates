@@ -15,20 +15,24 @@ interface UserProfileWithFollow {
   isFollowing?: boolean;
 }
 
+interface FollowerProfile {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+interface FollowingProfile {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
 interface FollowerRecord {
-  follower: {
-    id: string;
-    username: string | null;
-    avatar_url: string | null;
-  } | null;
+  follower: FollowerProfile | null;
 }
 
 interface FollowingRecord {
-  following: {
-    id: string;
-    username: string | null;
-    avatar_url: string | null;
-  } | null;
+  following: FollowingProfile | null;
 }
 
 interface FollowListProps {
@@ -90,10 +94,9 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
         }
         
         const formattedFollowers: UserProfileWithFollow[] = [];
-        const typedFollowersData = followersData as FollowerRecord[] | null;
         
-        if (typedFollowersData) {
-          for (const item of typedFollowersData) {
+        if (followersData) {
+          for (const item of followersData) {
             if (item.follower) {
               formattedFollowers.push({
                 id: item.follower.id,
@@ -106,10 +109,9 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
         }
         
         const formattedFollowing: UserProfileWithFollow[] = [];
-        const typedFollowingData = followingData as FollowingRecord[] | null;
         
-        if (typedFollowingData) {
-          for (const item of typedFollowingData) {
+        if (followingData) {
+          for (const item of followingData) {
             if (item.following) {
               formattedFollowing.push({
                 id: item.following.id,
