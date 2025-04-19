@@ -3,15 +3,15 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MovieCard from "@/components/MovieCard";
-import { Movie } from "@/lib/types";
+import { MediaItem } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface MovieListProps {
-  watchedMovies: Movie[];
-  toWatchMovies: Movie[];
-  favoriteMovies: Movie[];
+  watchedMovies: MediaItem[];
+  toWatchMovies: MediaItem[];
+  favoriteMovies: MediaItem[];
   isLoading: boolean;
 }
 
@@ -90,7 +90,7 @@ export const MovieList = ({
               {toWatchMovies.map((movie) => (
                 <MovieCard 
                   key={movie.id} 
-                  media={{...movie, media_type: 'movie'}} 
+                  media={movie} 
                   status="to_watch"
                 />
               ))}
@@ -116,7 +116,7 @@ export const MovieList = ({
               {watchedMovies.map((movie) => (
                 <MovieCard 
                   key={movie.id} 
-                  media={{...movie, media_type: 'movie'}}
+                  media={movie}
                   status="watched"
                 />
               ))}
@@ -142,7 +142,7 @@ export const MovieList = ({
               {favoriteMovies.map((movie) => (
                 <MovieCard 
                   key={movie.id} 
-                  media={{...movie, media_type: 'movie'}}
+                  media={movie}
                   status="favorite"
                 />
               ))}

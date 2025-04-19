@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Film, Search, UserPlus } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrendingMovies, fetchPopularMovies, discoverMovies } from "@/lib/tmdb";
+import { MediaItem } from "@/lib/types";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -56,9 +57,9 @@ const Dashboard = () => {
   });
 
   // Create empty movie lists for each status
-  const watchedMovies = [];
-  const toWatchMovies = [];
-  const favoriteMovies = [];
+  const watchedMovies: MediaItem[] = [];
+  const toWatchMovies: MediaItem[] = [];
+  const favoriteMovies: MediaItem[] = [];
   
   return (
     <div className="min-h-screen bg-background">

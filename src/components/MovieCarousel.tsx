@@ -1,11 +1,11 @@
 
 import { useState, useRef, useEffect } from "react";
-import { Movie } from "@/lib/types";
+import { MediaItem } from "@/lib/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import MovieCard from "@/components/MovieCard";
 
 interface MovieCarouselProps {
-  movies?: Movie[];
+  movies?: MediaItem[];
   title: string;
 }
 
@@ -95,7 +95,7 @@ export const MovieCarousel = ({ movies = [], title }: MovieCarouselProps) => {
             movies.map((movie) => (
               <div key={movie.id} className="w-48 min-w-[12rem] flex-shrink-0">
                 <MovieCard 
-                  media={{...movie, media_type: 'movie'}} 
+                  media={movie} 
                   showActions={false}
                 />
               </div>
