@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, User, Film, ArrowLeft } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
+import FollowButton from "@/components/FollowButton";
+import FollowList from "@/components/FollowList";
 
 interface UserData {
   id: string;
@@ -23,6 +25,17 @@ const UserProfile = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userMedia, setUserMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user?.id || null);
+    };
+    
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,20 +69,38 @@ const UserProfile = () => {
         }
         
         setUserMedia(mediaData || []);
+
+        // Check if current user follows this user
+        if (currentUserId && id !== currentUserId) {
+          const { data: followData, error: followError } = await supabase
+            .from("user_followers")
+            .select("id")
+            .eq("follower_id", currentUserId)
+            .eq("following_id", id)
+            .single();
+            
+          if (!followError && followData) {
+            setIsFollowing(true);
+          }
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load user data",
-          variant: "destructive",
-        });
+        if (error instanceof Error && error.message !== 'No rows found') {
+          toast({
+            title: "Error",
+            description: "Failed to load user data",
+            variant: "destructive",
+          });
+        }
       } finally {
         setLoading(false);
       }
     };
     
-    fetchUserData();
-  }, [id, toast]);
+    if (id && currentUserId !== undefined) {
+      fetchUserData();
+    }
+  }, [id, toast, currentUserId]);
 
   if (loading) {
     return (
@@ -135,11 +166,21 @@ const UserProfile = () => {
                   className="mb-4"
                 />
                 <h2 className="text-xl font-bold mb-2">{userData.username || "User"}</h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   Member since {new Date(userData.created_at).toLocaleDateString()}
                 </p>
+                
+                {currentUserId && currentUserId !== id && (
+                  <FollowButton userId={id} isFollowing={isFollowing} onFollowChange={setIsFollowing} />
+                )}
               </CardContent>
             </Card>
+            
+            {id && (
+              <div className="mt-6">
+                <FollowList userId={id} currentUserId={currentUserId} />
+              </div>
+            )}
           </div>
           
           {/* User Activity Tabs */}
