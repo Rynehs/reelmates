@@ -27,32 +27,34 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
 
   useEffect(() => {
     const fetchFollowData = async () => {
-      setIsLoading(true);
-      
       try {
-        // Fetch followers (users who follow the viewed user)
-        const { data: followersData, error: followersError } = await supabase
+        setIsLoading(true);
+        
+        // Fetch followers
+        const { data: followersData } = await supabase
           .from('user_followers')
           .select(`
-            follower_id,
-            follower:profiles!user_followers_follower_id_fkey(id, username, avatar_url)
+            follower:profiles!user_followers_follower_id_fkey(
+              id,
+              username,
+              avatar_url
+            )
           `)
           .eq('following_id', userId);
-          
-        if (followersError) throw followersError;
         
-        // Fetch following (users whom the viewed user follows)
-        const { data: followingData, error: followingError } = await supabase
+        // Fetch following
+        const { data: followingData } = await supabase
           .from('user_followers')
           .select(`
-            following_id,
-            following:profiles!user_followers_following_id_fkey(id, username, avatar_url)
+            following:profiles!user_followers_following_id_fkey(
+              id,
+              username,
+              avatar_url
+            )
           `)
           .eq('follower_id', userId);
-          
-        if (followingError) throw followingError;
         
-        // Check which users the current user is following (if logged in)
+        // Check which users the current user is following
         let currentUserFollowing: string[] = [];
         if (currentUserId) {
           const { data: currentFollowing } = await supabase
@@ -63,25 +65,23 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
           currentUserFollowing = (currentFollowing || []).map(f => f.following_id);
         }
         
-        // Format followers data
         const formattedFollowers = followersData
-          .filter(item => item.follower)
+          ?.filter(item => item.follower)
           .map(item => ({
             id: item.follower.id,
             username: item.follower.username,
             avatar_url: item.follower.avatar_url,
             isFollowing: currentUserFollowing.includes(item.follower.id)
-          }));
+          })) || [];
           
-        // Format following data
         const formattedFollowing = followingData
-          .filter(item => item.following)
+          ?.filter(item => item.following)
           .map(item => ({
             id: item.following.id,
             username: item.following.username,
             avatar_url: item.following.avatar_url,
             isFollowing: currentUserFollowing.includes(item.following.id)
-          }));
+          })) || [];
         
         setFollowers(formattedFollowers);
         setFollowing(formattedFollowing);

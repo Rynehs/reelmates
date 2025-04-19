@@ -46,7 +46,8 @@ const FollowButton = ({
         const { error } = await supabase
           .from('user_followers')
           .delete()
-          .match({ follower_id: currentUserId, following_id: userId });
+          .eq('follower_id', currentUserId)
+          .eq('following_id', userId);
           
         if (error) throw error;
         
@@ -58,7 +59,10 @@ const FollowButton = ({
         // Follow the user
         const { error } = await supabase
           .from('user_followers')
-          .insert({ follower_id: currentUserId, following_id: userId });
+          .insert({
+            follower_id: currentUserId,
+            following_id: userId
+          });
           
         if (error) throw error;
         
@@ -68,7 +72,6 @@ const FollowButton = ({
         });
       }
       
-      // Toggle the following state
       setIsFollowing(!isFollowing);
       if (onFollowChange) {
         onFollowChange(!isFollowing);
