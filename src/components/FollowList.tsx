@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,22 @@ interface UserProfileWithFollow {
   username: string | null;
   avatar_url: string | null;
   isFollowing?: boolean;
+}
+
+interface FollowerRecord {
+  follower: {
+    id: string;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+interface FollowingRecord {
+  following: {
+    id: string;
+    username: string | null;
+    avatar_url: string | null;
+  } | null;
 }
 
 interface FollowListProps {
@@ -30,7 +47,7 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
         setIsLoading(true);
         
         // Fetch followers
-        const { data: followersData } = await supabase
+        const { data: followersData, error: followersError } = await supabase
           .from('user_followers')
           .select(`
             follower:profiles!user_followers_follower_id_fkey(
@@ -41,8 +58,12 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
           `)
           .eq('following_id', userId);
         
+        if (followersError) {
+          console.error('Error fetching followers:', followersError);
+        }
+        
         // Fetch following
-        const { data: followingData } = await supabase
+        const { data: followingData, error: followingError } = await supabase
           .from('user_followers')
           .select(`
             following:profiles!user_followers_following_id_fkey(
@@ -52,6 +73,10 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
             )
           `)
           .eq('follower_id', userId);
+        
+        if (followingError) {
+          console.error('Error fetching following:', followingError);
+        }
         
         // Check which users the current user is following
         let currentUserFollowing: string[] = [];
@@ -65,8 +90,10 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
         }
         
         const formattedFollowers: UserProfileWithFollow[] = [];
-        if (followersData) {
-          for (const item of followersData) {
+        const typedFollowersData = followersData as FollowerRecord[] | null;
+        
+        if (typedFollowersData) {
+          for (const item of typedFollowersData) {
             if (item.follower) {
               formattedFollowers.push({
                 id: item.follower.id,
@@ -79,8 +106,10 @@ const FollowList = ({ userId, currentUserId }: FollowListProps) => {
         }
         
         const formattedFollowing: UserProfileWithFollow[] = [];
-        if (followingData) {
-          for (const item of followingData) {
+        const typedFollowingData = followingData as FollowingRecord[] | null;
+        
+        if (typedFollowingData) {
+          for (const item of typedFollowingData) {
             if (item.following) {
               formattedFollowing.push({
                 id: item.following.id,
