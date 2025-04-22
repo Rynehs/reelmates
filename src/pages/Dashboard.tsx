@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
@@ -10,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Film, Search, UserPlus } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrendingMovies, fetchPopularMovies, discoverMovies } from "@/lib/tmdb";
-import { UsersList } from "@/components/UsersList";
+import UsersList from "@/components/UsersList";
 import { MediaItem } from "@/lib/types";
 
 const Dashboard = () => {

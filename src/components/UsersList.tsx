@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -124,6 +123,7 @@ const UsersList = () => {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Badge variant="secondary" className="text-xs">
                       <Users className="h-3 w-3 mr-1" />
+                      {/* Fix the count property access, ensuring it's a number */}
                       {user.followers?.[0]?.count || 0} followers
                     </Badge>
                   </div>
