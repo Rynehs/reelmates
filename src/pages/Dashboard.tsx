@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
 import { MovieList } from "@/components/MovieList";
@@ -14,6 +14,26 @@ import { MediaItem } from "@/lib/types";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [checkedOnboarding, setCheckedOnboarding] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", data.session.user.id)
+        .single();
+      if (profile && profile.onboarding_completed === false) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        setCheckedOnboarding(true);
+      }
+    })();
+  }, [navigate]);
+
+  if (!checkedOnboarding) return null;
 
   const goToSearch = () => {
     navigate('/search');

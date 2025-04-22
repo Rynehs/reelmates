@@ -86,6 +86,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           id: string
+          onboarding_completed: boolean | null
           two_factor_enabled: boolean | null
           updated_at: string | null
           username: string | null
@@ -94,6 +95,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id: string
+          onboarding_completed?: boolean | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
@@ -102,6 +104,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
