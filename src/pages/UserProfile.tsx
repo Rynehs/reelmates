@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, User, Film, ArrowLeft } from "lucide-react";
@@ -15,8 +16,8 @@ interface UserData {
   username: string | null;
   avatar_url: string | null;
   created_at: string;
-  followers: { count: number }[];
-  following: { count: number }[];
+  followers: { count: number }[] | [];
+  following: { count: number }[] | [];
 }
 
 const UserProfile = () => {
@@ -47,7 +48,14 @@ const UserProfile = () => {
         
         if (profileError) throw profileError;
         
-        setUserData(profileData);
+        // Handle potential missing or malformed followers/following data
+        const userData: UserData = {
+          ...profileData,
+          followers: Array.isArray(profileData.followers) ? profileData.followers : [],
+          following: Array.isArray(profileData.following) ? profileData.following : []
+        };
+        
+        setUserData(userData);
         
         // Fetch user's media items
         const { data: mediaData, error: mediaError } = await supabase
@@ -279,4 +287,3 @@ const UserProfile = () => {
 };
 
 export default UserProfile;
-

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
 
-export const UsersList = () => {
+const UsersList = () => {
   const { toast } = useToast();
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
@@ -158,3 +158,4 @@ export const UsersList = () => {
   );
 };
 
+export default UsersList;

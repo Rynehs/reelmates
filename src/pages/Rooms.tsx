@@ -40,6 +40,7 @@ import { Room } from "@/lib/types";
 import { RoomInputCodeDialog } from "@/components/RoomInputCodeDialog";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import UsersList from "@/components/UsersList";
 
 const generateRoomCode = () => {
   // Generate a 6-digit alphanumeric code (excluding confusing characters like O, 0, 1, I, etc.)
