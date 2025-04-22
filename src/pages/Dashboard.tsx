@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Film, Search, UserPlus } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrendingMovies, fetchPopularMovies, discoverMovies } from "@/lib/tmdb";
-import UsersList from "@/components/UsersList";
 import { MediaItem } from "@/lib/types";
 
 const Dashboard = () => {
@@ -98,16 +97,11 @@ const Dashboard = () => {
           </Card>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <div className="lg:col-span-3">
-            <MovieCarousel 
-              movies={trendingMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
-              title="Trending Today" 
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <UsersList />
-          </div>
+        <section className="mb-8">
+          <MovieCarousel 
+            movies={trendingMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
+            title="Trending Today" 
+          />
         </section>
 
         <section className="mb-8">
