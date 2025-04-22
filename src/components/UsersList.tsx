@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -9,6 +8,15 @@ import { UserPlus, UserMinus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from './UserAvatar';
 import { Badge } from "@/components/ui/badge";
+
+interface UserWithFollowers {
+  id: string;
+  username: string | null;
+  avatar_url?: string | null;
+  followers?: Array<{count: number}> | null;
+  following?: Array<{count: number}> | null;
+  [key: string]: any;
+}
 
 const UsersList = () => {
   const { toast } = useToast();
@@ -33,7 +41,7 @@ const UsersList = () => {
         .neq('id', currentUser?.id);
       
       if (error) throw error;
-      return profiles;
+      return profiles as UserWithFollowers[];
     },
     enabled: !!currentUser,
   });
@@ -124,7 +132,12 @@ const UsersList = () => {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Badge variant="secondary" className="text-xs">
                       <Users className="h-3 w-3 mr-1" />
-                      {(user.followers && user.followers[0] && typeof user.followers[0].count === 'number' ? user.followers[0].count : 0)} followers
+                      {user.followers && 
+                       Array.isArray(user.followers) && 
+                       user.followers[0] && 
+                       typeof user.followers[0].count === 'number' 
+                        ? user.followers[0].count 
+                        : 0} followers
                     </Badge>
                   </div>
                 </div>
