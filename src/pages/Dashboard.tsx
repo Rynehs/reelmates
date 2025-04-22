@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Film, Search, UserPlus } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTrendingMovies, fetchPopularMovies, discoverMovies } from "@/lib/tmdb";
-import { MediaItem } from "@/lib/types";
+import { UsersList } from "@/components/UsersList";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -19,7 +19,6 @@ const Dashboard = () => {
     navigate('/search');
   };
 
-  // Fetch trending movies
   const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
     queryKey: ['trendingMovies'],
     queryFn: async () => {
@@ -28,7 +27,6 @@ const Dashboard = () => {
     },
   });
 
-  // Fetch popular movies
   const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
     queryKey: ['popularMovies'],
     queryFn: async () => {
@@ -37,7 +35,6 @@ const Dashboard = () => {
     },
   });
 
-  // Fetch action movies
   const { data: actionMovies = [], isLoading: isActionLoading } = useQuery({
     queryKey: ['actionMovies'],
     queryFn: async () => {
@@ -46,7 +43,6 @@ const Dashboard = () => {
     },
   });
 
-  // Fetch comedy movies
   const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery({
     queryKey: ['comedyMovies'],
     queryFn: async () => {
@@ -55,7 +51,6 @@ const Dashboard = () => {
     },
   });
 
-  // Create empty movie lists for each status
   const watchedMovies: MediaItem[] = [];
   const toWatchMovies: MediaItem[] = [];
   const favoriteMovies: MediaItem[] = [];
@@ -102,11 +97,16 @@ const Dashboard = () => {
           </Card>
         </section>
 
-        <section className="mb-8">
-          <MovieCarousel 
-            movies={trendingMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
-            title="Trending Today" 
-          />
+        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          <div className="lg:col-span-3">
+            <MovieCarousel 
+              movies={trendingMovies?.map(movie => ({...movie, media_type: 'movie'}))} 
+              title="Trending Today" 
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <UsersList />
+          </div>
         </section>
 
         <section className="mb-8">
