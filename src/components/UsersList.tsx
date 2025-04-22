@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -13,8 +14,8 @@ interface UserWithFollowers {
   id: string;
   username: string | null;
   avatar_url?: string | null;
-  followers?: Array<{count: number}> | null;
-  following?: Array<{count: number}> | null;
+  followers_count?: number;
+  following_count?: number;
   [key: string]: any;
 }
 
@@ -31,17 +32,38 @@ const UsersList = () => {
   const { data: users, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
+      // Using a subquery approach for counts to avoid relation errors
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select(`
           *,
-          followers:user_followers!following_id(count),
-          following:user_followers!follower_id(count)
+          followers_count: user_followers!following_id(count),
+          following_count: user_followers!follower_id(count)
         `)
         .neq('id', currentUser?.id);
       
       if (error) throw error;
-      return profiles as UserWithFollowers[];
+      
+      // Transform the data to match our interface
+      return (profiles || []).map(profile => {
+        // Extract follower count safely
+        const followersCount = profile.followers_count && 
+                              Array.isArray(profile.followers_count) && 
+                              profile.followers_count.length > 0 ? 
+                              profile.followers_count[0].count : 0;
+        
+        // Extract following count safely
+        const followingCount = profile.following_count && 
+                              Array.isArray(profile.following_count) && 
+                              profile.following_count.length > 0 ? 
+                              profile.following_count[0].count : 0;
+        
+        return {
+          ...profile,
+          followers_count: followersCount,
+          following_count: followingCount
+        } as UserWithFollowers;
+      });
     },
     enabled: !!currentUser,
   });
@@ -132,12 +154,7 @@ const UsersList = () => {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Badge variant="secondary" className="text-xs">
                       <Users className="h-3 w-3 mr-1" />
-                      {user.followers && 
-                       Array.isArray(user.followers) && 
-                       user.followers[0] && 
-                       typeof user.followers[0].count === 'number' 
-                        ? user.followers[0].count 
-                        : 0} followers
+                      {user.followers_count || 0} followers
                     </Badge>
                   </div>
                 </div>
