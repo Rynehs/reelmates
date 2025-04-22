@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -16,30 +17,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [checkedOnboarding, setCheckedOnboarding] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", data.session.user.id)
-        .single();
-      if (profile && profile.onboarding_completed === false) {
-        navigate("/onboarding", { replace: true });
-      } else {
-        setCheckedOnboarding(true);
-      }
-    })();
-  }, [navigate]);
-
-  if (!checkedOnboarding) return null;
-
-  const goToSearch = () => {
-    navigate('/search');
-  };
-
+  
+  // Define all queries first to ensure they're always called in the same order
   const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
     queryKey: ['trendingMovies'],
     queryFn: async () => {
@@ -72,9 +51,36 @@ const Dashboard = () => {
     },
   });
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", data.session.user.id)
+        .single();
+      if (profile && profile.onboarding_completed === false) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        setCheckedOnboarding(true);
+      }
+    })();
+  }, [navigate]);
+
+  const goToSearch = () => {
+    navigate('/search');
+  };
+
+  // Define placeholder data
   const watchedMovies: MediaItem[] = [];
   const toWatchMovies: MediaItem[] = [];
   const favoriteMovies: MediaItem[] = [];
+  
+  // Only render the main content when onboarding has been checked
+  if (!checkedOnboarding) {
+    return null;
+  }
   
   return (
     <div className="min-h-screen bg-background">
