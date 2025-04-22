@@ -1,4 +1,3 @@
-
 import { 
   Dialog, 
   DialogContent, 
@@ -661,66 +660,74 @@ const Rooms = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Movie Rooms</h1>
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={() => setShowCodeDialog(true)} size={isMobile ? "sm" : "default"}>
-                <ArrowRightCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
-                Join Room
-              </Button>
-              
-              <Button onClick={() => setShowCreateDialog(true)} size={isMobile ? "sm" : "default"}>
-                <PlusCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
-                Create Room
-              </Button>
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : allRooms.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allRooms.map((room) => {
-                const isMember = memberRooms.has(room.id);
-                const isAdmin = adminRooms.has(room.id);
-                return (
-                  <RoomCard 
-                    key={room.id} 
-                    room={room} 
-                    onJoin={() => handleRoomClick(room.id, room.name, isMember)}
-                    onView={() => navigate(`/room/${room.id}`)}
-                    isAdmin={isAdmin}
-                    isMember={isMember}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <Users className="h-12 w-12 text-muted-foreground" />
-                <div>
-                  <h3 className="text-lg font-medium">No Rooms Yet</h3>
-                  <p className="text-muted-foreground">
-                    Create a room to share and discuss movies with friends, or join an existing room.
-                  </p>
-                </div>
-                <div className="flex space-x-2 pt-4">
-                  <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
-                    <ArrowRightCircle className="mr-2 h-4 w-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold">Movie Rooms</h1>
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={() => setShowCodeDialog(true)} size={isMobile ? "sm" : "default"}>
+                    <ArrowRightCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
                     Join Room
                   </Button>
-                  <Button onClick={() => setShowCreateDialog(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                  
+                  <Button onClick={() => setShowCreateDialog(true)} size={isMobile ? "sm" : "default"}>
+                    <PlusCircle className={`${isMobile ? "h-3 w-3" : "h-4 w-4"} mr-2`} />
                     Create Room
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+
+              {isLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : allRooms.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {allRooms.map((room) => {
+                    const isMember = memberRooms.has(room.id);
+                    const isAdmin = adminRooms.has(room.id);
+                    return (
+                      <RoomCard 
+                        key={room.id} 
+                        room={room} 
+                        onJoin={() => handleRoomClick(room.id, room.name, isMember)}
+                        onView={() => navigate(`/room/${room.id}`)}
+                        isAdmin={isAdmin}
+                        isMember={isMember}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
+                    <Users className="h-12 w-12 text-muted-foreground" />
+                    <div>
+                      <h3 className="text-lg font-medium">No Rooms Yet</h3>
+                      <p className="text-muted-foreground">
+                        Create a room to share and discuss movies with friends, or join an existing room.
+                      </p>
+                    </div>
+                    <div className="flex space-x-2 pt-4">
+                      <Button variant="outline" onClick={() => setShowCodeDialog(true)}>
+                        <ArrowRightCircle className="mr-2 h-4 w-4" />
+                        Join Room
+                      </Button>
+                      <Button onClick={() => setShowCreateDialog(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create Room
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <UsersList />
+          </div>
         </div>
       </main>
 

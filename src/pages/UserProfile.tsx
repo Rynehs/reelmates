@@ -15,6 +15,8 @@ interface UserData {
   username: string | null;
   avatar_url: string | null;
   created_at: string;
+  followers: { count: number }[];
+  following: { count: number }[];
 }
 
 const UserProfile = () => {
@@ -22,6 +24,7 @@ const UserProfile = () => {
   const { toast } = useToast();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userMedia, setUserMedia] = useState<any[]>([]);
+  const [userRooms, setUserRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,16 +34,18 @@ const UserProfile = () => {
       try {
         setLoading(true);
         
-        // Fetch user profile data
+        // Fetch user profile data with follower counts
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("*")
+          .select(`
+            *,
+            followers:user_followers!following_id(count),
+            following:user_followers!follower_id(count)
+          `)
           .eq("id", id)
           .single();
         
-        if (profileError) {
-          throw profileError;
-        }
+        if (profileError) throw profileError;
         
         setUserData(profileData);
         
@@ -51,11 +56,27 @@ const UserProfile = () => {
           .eq("user_id", id)
           .order("created_at", { ascending: false });
         
-        if (mediaError) {
-          throw mediaError;
-        }
+        if (mediaError) throw mediaError;
         
         setUserMedia(mediaData || []);
+
+        // Fetch user's rooms
+        const { data: roomsData, error: roomsError } = await supabase
+          .from("room_members")
+          .select(`
+            rooms (
+              id,
+              name,
+              description,
+              profile_icon,
+              created_at
+            )
+          `)
+          .eq("user_id", id);
+
+        if (roomsError) throw roomsError;
+        
+        setUserRooms(roomsData?.map(r => r.rooms) || []);
       } catch (error) {
         console.error("Error fetching user data:", error);
         toast({
@@ -128,20 +149,69 @@ const UserProfile = () => {
               <CardContent className="flex flex-col items-center text-center">
                 <UserAvatar 
                   user={{ 
-                    name: userData.username || "User", 
-                    avatar_url: userData.avatar_url 
+                    name: userData?.username || "User", 
+                    avatar_url: userData?.avatar_url 
                   }} 
                   size="lg"
                   className="mb-4"
                 />
-                <h2 className="text-xl font-bold mb-2">{userData.username || "User"}</h2>
+                <h2 className="text-xl font-bold mb-2">{userData?.username || "User"}</h2>
+                <div className="flex gap-4 mb-4">
+                  <Badge variant="secondary">
+                    {userData?.followers?.[0]?.count || 0} followers
+                  </Badge>
+                  <Badge variant="secondary">
+                    {userData?.following?.[0]?.count || 0} following
+                  </Badge>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Member since {new Date(userData.created_at).toLocaleDateString()}
+                  Member since {userData?.created_at ? new Date(userData.created_at).toLocaleDateString() : '-'}
                 </p>
               </CardContent>
             </Card>
+
+            {/* User's Rooms */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Movie Rooms</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {userRooms.map((room: any) => (
+                    <Link 
+                      key={room.id} 
+                      to={`/room/${room.id}`}
+                      className="flex items-center space-x-3 p-2 hover:bg-accent rounded-lg transition-colors"
+                    >
+                      {room.profile_icon ? (
+                        <img 
+                          src={room.profile_icon} 
+                          alt={room.name}
+                          className="w-10 h-10 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          {room.name.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium">{room.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(room.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                  {userRooms.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4">
+                      Not a member of any rooms yet
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          
+
           {/* User Activity Tabs */}
           <div className="w-full md:w-2/3">
             <Tabs defaultValue="movies">
@@ -150,9 +220,7 @@ const UserProfile = () => {
                   <Film className="mr-2 h-4 w-4" />
                   Movies & Shows
                 </TabsTrigger>
-                <TabsTrigger value="activity">
-                  Activity
-                </TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
               </TabsList>
               
               <TabsContent value="movies" className="mt-6">
@@ -163,12 +231,14 @@ const UserProfile = () => {
                   <CardContent>
                     {userMedia.length > 0 ? (
                       <div className="space-y-4">
-                        {userMedia.map(item => (
+                        {userMedia.map((item: any) => (
                           <div key={item.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
                             <Film className="h-5 w-5 text-muted-foreground" />
                             <div>
                               <p className="font-medium">Movie ID: {item.movie_id}</p>
-                              <p className="text-xs text-muted-foreground capitalize">Status: {item.status}</p>
+                              <p className="text-xs text-muted-foreground capitalize">
+                                Status: {item.status}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -209,3 +279,4 @@ const UserProfile = () => {
 };
 
 export default UserProfile;
+

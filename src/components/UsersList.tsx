@@ -1,12 +1,14 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, UserMinus } from "lucide-react";
+import { UserPlus, UserMinus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from './UserAvatar';
+import { Badge } from "@/components/ui/badge";
 
 export const UsersList = () => {
   const { toast } = useToast();
@@ -23,7 +25,11 @@ export const UsersList = () => {
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          followers:user_followers!following_id(count),
+          following:user_followers!follower_id(count)
+        `)
         .neq('id', currentUser?.id);
       
       if (error) throw error;
@@ -32,7 +38,7 @@ export const UsersList = () => {
     enabled: !!currentUser,
   });
 
-  const { data: following } = useQuery({
+  const { data: following, refetch: refetchFollowing } = useQuery({
     queryKey: ['following', currentUser?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,6 +69,7 @@ export const UsersList = () => {
       });
       
       refetchUsers();
+      refetchFollowing();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -87,6 +94,7 @@ export const UsersList = () => {
       });
       
       refetchUsers();
+      refetchFollowing();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -109,12 +117,18 @@ export const UsersList = () => {
         <div className="space-y-4">
           {users?.map((user) => (
             <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50">
-              <div className="flex items-center space-x-3">
+              <Link to={`/user/${user.id}`} className="flex items-center space-x-3 flex-1">
                 <UserAvatar user={user} />
                 <div>
                   <p className="font-medium">{user.username || 'Anonymous User'}</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      {user.followers?.[0]?.count || 0} followers
+                    </Badge>
+                  </div>
                 </div>
-              </div>
+              </Link>
               {following?.includes(user.id) ? (
                 <Button 
                   variant="outline" 
@@ -143,3 +157,4 @@ export const UsersList = () => {
     </Card>
   );
 };
+
