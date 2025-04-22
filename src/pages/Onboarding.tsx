@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Film, Help, Info, Star, Check } from "lucide-react";
+import { Film, Info, Star, Check, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const ONBOARDING_STEPS = [
@@ -24,7 +24,7 @@ const ONBOARDING_STEPS = [
     description: "Create rooms and chat with friends to discuss and suggest movies.",
   },
   {
-    icon: <Help className="w-8 h-8 text-primary mx-auto" />,
+    icon: <HelpCircle className="w-8 h-8 text-primary mx-auto" />,
     title: "Manage Your Profile",
     description: "Set up your avatar and personalize your profile settings.",
   },
