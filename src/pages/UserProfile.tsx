@@ -16,8 +16,8 @@ interface UserData {
   username: string | null;
   avatar_url: string | null;
   created_at: string;
-  followers: { count: number }[] | [];
-  following: { count: number }[] | [];
+  followers_count: number;
+  following_count: number;
 }
 
 const UserProfile = () => {
@@ -27,6 +27,7 @@ const UserProfile = () => {
   const [userMedia, setUserMedia] = useState<any[]>([]);
   const [userRooms, setUserRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -34,28 +35,57 @@ const UserProfile = () => {
       
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch user profile data with follower counts
+        console.log("Fetching user profile with ID:", id);
+        
+        // Fetch the basic user profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select(`
-            *,
-            followers:user_followers!following_id(count),
-            following:user_followers!follower_id(count)
-          `)
+          .select("*")
           .eq("id", id)
           .single();
         
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          throw new Error(`Failed to fetch user profile: ${profileError.message}`);
+        }
         
-        // Handle potential missing or malformed followers/following data
+        if (!profileData) {
+          throw new Error("User profile not found");
+        }
+        
+        console.log("Fetched profile data:", profileData);
+        
+        // Get follower count (how many users follow this user)
+        const { count: followerCount, error: followerError } = await supabase
+          .from("user_followers")
+          .select("*", { count: "exact", head: true })
+          .eq("following_id", id);
+        
+        if (followerError) {
+          console.error("Error fetching follower count:", followerError);
+        }
+        
+        // Get following count (how many users this user follows)
+        const { count: followingCount, error: followingError } = await supabase
+          .from("user_followers")
+          .select("*", { count: "exact", head: true })
+          .eq("follower_id", id);
+        
+        if (followingError) {
+          console.error("Error fetching following count:", followingError);
+        }
+        
+        // Combine the data
         const userData: UserData = {
           ...profileData,
-          followers: Array.isArray(profileData.followers) ? profileData.followers : [],
-          following: Array.isArray(profileData.following) ? profileData.following : []
+          followers_count: followerCount || 0,
+          following_count: followingCount || 0
         };
         
         setUserData(userData);
+        console.log("Combined user data:", userData);
         
         // Fetch user's media items
         const { data: mediaData, error: mediaError } = await supabase
@@ -64,9 +94,13 @@ const UserProfile = () => {
           .eq("user_id", id)
           .order("created_at", { ascending: false });
         
-        if (mediaError) throw mediaError;
+        if (mediaError) {
+          console.error("Error fetching user media:", mediaError);
+          throw new Error(`Failed to fetch user media: ${mediaError.message}`);
+        }
         
         setUserMedia(mediaData || []);
+        console.log("Fetched user media items:", mediaData?.length || 0);
 
         // Fetch user's rooms
         const { data: roomsData, error: roomsError } = await supabase
@@ -82,14 +116,20 @@ const UserProfile = () => {
           `)
           .eq("user_id", id);
 
-        if (roomsError) throw roomsError;
+        if (roomsError) {
+          console.error("Error fetching user rooms:", roomsError);
+          throw new Error(`Failed to fetch user rooms: ${roomsError.message}`);
+        }
         
         setUserRooms(roomsData?.map(r => r.rooms) || []);
+        console.log("Fetched user rooms:", roomsData?.length || 0);
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error in fetchUserData:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to load user data";
+        setError(errorMessage);
         toast({
           title: "Error",
-          description: "Failed to load user data",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -113,7 +153,7 @@ const UserProfile = () => {
     );
   }
 
-  if (!userData) {
+  if (error || !userData) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -122,7 +162,7 @@ const UserProfile = () => {
             <User className="h-12 w-12 mx-auto text-muted-foreground" />
             <h2 className="mt-4 text-xl font-semibold">User Not Found</h2>
             <p className="mt-2 text-muted-foreground">
-              We couldn't find the user you're looking for.
+              {error || "We couldn't find the user you're looking for."}
             </p>
             <Button asChild className="mt-4">
               <Link to="/rooms">
@@ -166,10 +206,10 @@ const UserProfile = () => {
                 <h2 className="text-xl font-bold mb-2">{userData?.username || "User"}</h2>
                 <div className="flex gap-4 mb-4">
                   <Badge variant="secondary">
-                    {userData?.followers?.[0]?.count || 0} followers
+                    {userData.followers_count} followers
                   </Badge>
                   <Badge variant="secondary">
-                    {userData?.following?.[0]?.count || 0} following
+                    {userData.following_count} following
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
