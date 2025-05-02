@@ -205,17 +205,19 @@ const UsersList = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Other Movie Enthusiasts</CardTitle>
+        <CardTitle className="text-xl">Other Movie Enthusiasts</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {users && users.length > 0 ? (
             users.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50">
-                <Link to={`/user/${user.id}`} className="flex items-center space-x-3 flex-1">
-                  <UserAvatar user={user} />
-                  <div>
-                    <p className="font-medium">{user.username || 'Anonymous User'}</p>
+              <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-2 rounded-lg hover:bg-accent/50 gap-2">
+                <Link to={`/user/${user.id}`} className="flex items-center space-x-3 min-w-0">
+                  <div className="flex-shrink-0">
+                    <UserAvatar user={user} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{user.username || 'Anonymous User'}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Badge variant="secondary" className="text-xs">
                         <Users className="h-3 w-3 mr-1" />
@@ -224,24 +226,30 @@ const UsersList = () => {
                     </div>
                   </div>
                 </Link>
-                {following && (following.includes(user.id) ? (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleUnfollow(user.id)}
-                    size="sm"
-                  >
-                    <UserMinus className="mr-2 h-4 w-4" />
-                    Unfollow
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={() => handleFollow(user.id)}
-                    size="sm"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Follow
-                  </Button>
-                ))}
+                {following && (
+                  <div className="mt-2 sm:mt-0 flex-shrink-0">
+                    {following.includes(user.id) ? (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleUnfollow(user.id)}
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        <UserMinus className="sm:mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Unfollow</span>
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => handleFollow(user.id)}
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        <UserPlus className="sm:mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Follow</span>
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           ) : (
