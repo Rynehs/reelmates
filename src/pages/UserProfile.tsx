@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, User, Film, ArrowLeft } from "lucide-react";
+import { Loader2, User, Film, ArrowLeft, Clock, Heart, Check } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
+import MovieCard from "@/components/MovieCard";
+import { MediaItem } from "@/lib/types";
 
 interface UserData {
   id: string;
@@ -20,15 +22,27 @@ interface UserData {
   following_count: number;
 }
 
+interface UserMovie {
+  id: string;
+  movie_id: number;
+  media_type: 'movie' | 'tv';
+  status: 'watched' | 'to_watch' | 'favorite';
+  created_at: string;
+  title?: string;
+  poster_path?: string;
+}
+
 const UserProfile = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [userMedia, setUserMedia] = useState<any[]>([]);
+  const [userMovies, setUserMovies] = useState<UserMovie[]>([]);
+  const [mediaItems, setMediaItems] = useState<{[key: number]: MediaItem}>({});
   const [userRooms, setUserRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
+  // Fetch user data including profile, follower/following counts, rooms, and movies
   useEffect(() => {
     const fetchUserData = async () => {
       if (!id) return;
@@ -87,20 +101,20 @@ const UserProfile = () => {
         setUserData(userData);
         console.log("Combined user data:", userData);
         
-        // Fetch user's media items
-        const { data: mediaData, error: mediaError } = await supabase
+        // Fetch user's movies with detailed information
+        const { data: moviesData, error: moviesError } = await supabase
           .from("user_movies")
           .select("*")
           .eq("user_id", id)
           .order("created_at", { ascending: false });
         
-        if (mediaError) {
-          console.error("Error fetching user media:", mediaError);
-          throw new Error(`Failed to fetch user media: ${mediaError.message}`);
+        if (moviesError) {
+          console.error("Error fetching user movies:", moviesError);
+          throw new Error(`Failed to fetch user movies: ${moviesError.message}`);
         }
         
-        setUserMedia(mediaData || []);
-        console.log("Fetched user media items:", mediaData?.length || 0);
+        setUserMovies(moviesData || []);
+        console.log("Fetched user movies:", moviesData?.length || 0);
 
         // Fetch user's rooms
         const { data: roomsData, error: roomsError } = await supabase
@@ -139,6 +153,32 @@ const UserProfile = () => {
     
     fetchUserData();
   }, [id, toast]);
+  
+  // Prepare movie media items for display
+  useEffect(() => {
+    if (userMovies.length === 0) return;
+    
+    // Convert user movies to MediaItem format for MovieCard
+    const mediaItemsMap: {[key: number]: MediaItem} = {};
+    
+    userMovies.forEach(movie => {
+      mediaItemsMap[movie.movie_id] = {
+        id: movie.movie_id,
+        title: movie.title || `Movie ${movie.movie_id}`,
+        name: movie.title,
+        poster_path: movie.poster_path || null,
+        backdrop_path: null,
+        vote_average: 0,
+        overview: "",
+        genre_ids: [],
+        media_type: movie.media_type || 'movie',
+        release_date: '',
+        first_air_date: '',
+      };
+    });
+    
+    setMediaItems(mediaItemsMap);
+  }, [userMovies]);
 
   if (loading) {
     return (
@@ -175,6 +215,11 @@ const UserProfile = () => {
       </div>
     );
   }
+  
+  // Group movies by status
+  const watchedMovies = userMovies.filter(movie => movie.status === 'watched');
+  const toWatchMovies = userMovies.filter(movie => movie.status === 'to_watch');
+  const favoriteMovies = userMovies.filter(movie => movie.status === 'favorite');
 
   return (
     <div className="min-h-screen bg-background">
@@ -260,34 +305,45 @@ const UserProfile = () => {
             </Card>
           </div>
 
-          {/* User Activity Tabs */}
+          {/* User Movies Tabs */}
           <div className="w-full md:w-2/3">
-            <Tabs defaultValue="movies">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="movies">
+            <Tabs defaultValue="all">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">
                   <Film className="mr-2 h-4 w-4" />
-                  Movies & Shows
+                  All
                 </TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="watched">
+                  <Check className="mr-2 h-4 w-4" />
+                  Watched
+                </TabsTrigger>
+                <TabsTrigger value="watchlist">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Watchlist
+                </TabsTrigger>
+                <TabsTrigger value="favorites">
+                  <Heart className="mr-2 h-4 w-4" />
+                  Favorites
+                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="movies" className="mt-6">
+              <TabsContent value="all" className="mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Watched Media</CardTitle>
+                    <CardTitle>All Movies & Shows ({userMovies.length})</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {userMedia.length > 0 ? (
-                      <div className="space-y-4">
-                        {userMedia.map((item: any) => (
-                          <div key={item.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
-                            <Film className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <p className="font-medium">Movie ID: {item.movie_id}</p>
-                              <p className="text-xs text-muted-foreground capitalize">
-                                Status: {item.status}
-                              </p>
-                            </div>
+                    {userMovies.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                        {userMovies.map((movie) => (
+                          <div key={movie.id} className="h-full">
+                            {mediaItems[movie.movie_id] && (
+                              <MovieCard 
+                                media={mediaItems[movie.movie_id]} 
+                                status={movie.status}
+                                showActions={false}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -297,6 +353,105 @@ const UserProfile = () => {
                         <h3 className="mt-4 text-lg font-medium">No media found</h3>
                         <p className="mt-2 text-sm text-muted-foreground">
                           This user hasn't added any movies or shows yet
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="watched" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Watched ({watchedMovies.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {watchedMovies.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                        {watchedMovies.map((movie) => (
+                          <div key={movie.id} className="h-full">
+                            {mediaItems[movie.movie_id] && (
+                              <MovieCard 
+                                media={mediaItems[movie.movie_id]} 
+                                status="watched"
+                                showActions={false}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Check className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-medium">No watched media</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          This user hasn't marked any movies or shows as watched
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="watchlist" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Watch Later ({toWatchMovies.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {toWatchMovies.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                        {toWatchMovies.map((movie) => (
+                          <div key={movie.id} className="h-full">
+                            {mediaItems[movie.movie_id] && (
+                              <MovieCard 
+                                media={mediaItems[movie.movie_id]} 
+                                status="to_watch"
+                                showActions={false}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Clock className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-medium">No watch later items</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          This user hasn't added any movies or shows to watch later
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="favorites" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Favorites ({favoriteMovies.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {favoriteMovies.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                        {favoriteMovies.map((movie) => (
+                          <div key={movie.id} className="h-full">
+                            {mediaItems[movie.movie_id] && (
+                              <MovieCard 
+                                media={mediaItems[movie.movie_id]} 
+                                status="favorite"
+                                showActions={false}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Heart className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <h3 className="mt-4 text-lg font-medium">No favorite media</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          This user hasn't marked any movies or shows as favorites
                         </p>
                       </div>
                     )}
