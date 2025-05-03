@@ -62,12 +62,13 @@ const Login = () => {
         
         navigate("/dashboard");
       } else {
+        // Store username in metadata when registering
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              username,
+              username, // Store the username in user metadata
             },
           },
         });

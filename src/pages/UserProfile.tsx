@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Navbar } from "@/components/Navbar";
@@ -25,11 +24,15 @@ interface UserData {
 interface UserMovie {
   id: string;
   movie_id: number;
-  media_type: 'movie' | 'tv';
+  media_type: 'movie' | 'tv';  // Fixed: explicitly restricting to allowed values
   status: 'watched' | 'to_watch' | 'favorite';
   created_at: string;
   title?: string;
-  poster_path?: string;
+  poster_path?: string | null;
+  notes?: string | null;
+  rating?: number | null;
+  updated_at?: string | null;
+  user_id: string;
 }
 
 const UserProfile = () => {
@@ -113,7 +116,8 @@ const UserProfile = () => {
           throw new Error(`Failed to fetch user movies: ${moviesError.message}`);
         }
         
-        setUserMovies(moviesData || []);
+        // Explicitly cast the movies data to match our UserMovie interface
+        setUserMovies((moviesData || []) as UserMovie[]);
         console.log("Fetched user movies:", moviesData?.length || 0);
 
         // Fetch user's rooms

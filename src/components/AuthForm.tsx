@@ -52,12 +52,14 @@ const AuthForm = () => {
         
         navigate("/dashboard");
       } else {
+        // When registering, store the name in the user metadata
+        // This will be used by the handle_new_user trigger to populate the profiles table
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              name: name,
+              name: name, // Store the name in user metadata
             },
           },
         });
