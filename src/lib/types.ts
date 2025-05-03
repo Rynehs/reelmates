@@ -1,8 +1,9 @@
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  avatar_url?: string;
+  avatar_url?: string;  // Can be either a URL to an image or a JSON string of Avataar config
   created_at: string;
   two_factor_enabled?: boolean;
 }

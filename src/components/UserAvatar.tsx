@@ -1,9 +1,10 @@
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar as UIAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/lib/types";
 import { useState } from "react";
-import { Loader2, User as UserIcon, UserRound, Users, UsersRound, CircleUser } from "lucide-react";
-import { isPredefinedAvatar, PRESET_AVATARS } from "./AvatarPicker";
+import { Loader2 } from "lucide-react";
+import { isPredefinedAvatar, isAvataarConfig } from "./AvatarPicker";
+import Avatar from "avataaars";
 
 interface UserAvatarProps {
   user: Partial<User>;
@@ -41,16 +42,6 @@ const UserAvatar = ({
     }
   };
   
-  const getIconSize = () => {
-    switch (size) {
-      case "xs": return "h-3 w-3";
-      case "sm": return "h-4 w-4";
-      case "lg": return "h-7 w-7";
-      case "xl": return "h-12 w-12";
-      default: return "h-6 w-6";
-    }
-  };
-  
   const initials = user.name
     ? user.name
         .split(" ")
@@ -70,52 +61,41 @@ const UserAvatar = ({
     setHasError(true);
   };
 
-  // Check if avatar is a predefined one
-  const isPredefined = user.avatar_url && isPredefinedAvatar(user.avatar_url);
+  // Check if avatar is an Avataar config
+  const isAvataar = user.avatar_url && isAvataarConfig(user.avatar_url);
   
-  // Render predefined icon if needed
-  const renderPredefinedAvatar = () => {
-    if (!user.avatar_url) return null;
+  // Render Avataar if the avatar_url is a valid Avataar config
+  const renderAvataar = () => {
+    if (!user.avatar_url || !isAvataar) return null;
     
-    const iconProps = { className: getIconSize() + " text-primary" };
-    
-    if (user.avatar_url === PRESET_AVATARS.USER) {
-      return <UserIcon {...iconProps} />;
-    } else if (user.avatar_url === PRESET_AVATARS.USER_ROUND) {
-      return <UserRound {...iconProps} />;
-    } else if (user.avatar_url === PRESET_AVATARS.USERS) {
-      return <Users {...iconProps} />;
-    } else if (user.avatar_url === PRESET_AVATARS.USERS_ROUND) {
-      return <UsersRound {...iconProps} />;
-    } else if (user.avatar_url === PRESET_AVATARS.CIRCLE_USER) {
-      return <CircleUser {...iconProps} />;
-    } else {
-      // For other preset avatars (images)
+    try {
+      const config = JSON.parse(user.avatar_url);
       return (
-        <AvatarImage 
-          src={user.avatar_url} 
-          alt={user.name || "User"} 
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          className={isLoading ? "opacity-0" : "opacity-100"}
-        />
+        <div className="flex items-center justify-center h-full w-full">
+          <Avatar
+            style={{ width: '100%', height: '100%' }}
+            {...config}
+          />
+        </div>
       );
+    } catch (e) {
+      console.error("Error rendering avataar:", e);
+      return null;
     }
   };
 
   return (
-    <Avatar className={`${getSize()} ${className} relative`}>
-      {user.avatar_url && !hasError ? (
+    <UIAvatar className={`${getSize()} ${className} relative`}>
+      {user.avatar_url && !hasError && (
         <>
-          {isLoading && !isPredefined && (
+          {isLoading && !isAvataar && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted z-10 rounded-full">
               <Loader2 className="h-3 w-3 animate-spin" />
             </div>
           )}
-          {isPredefined ? (
-            <div className="flex items-center justify-center h-full w-full">
-              {renderPredefinedAvatar()}
-            </div>
+          
+          {isAvataar ? (
+            renderAvataar()
           ) : (
             <AvatarImage 
               src={user.avatar_url} 
@@ -126,13 +106,13 @@ const UserAvatar = ({
             />
           )}
         </>
-      ) : null}
+      )}
       {(!user.avatar_url || hasError) && (
         <AvatarFallback className={getFallbackSize()}>
           {initials}
         </AvatarFallback>
       )}
-    </Avatar>
+    </UIAvatar>
   );
 };
 
