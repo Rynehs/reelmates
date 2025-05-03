@@ -1,4 +1,3 @@
-
 import { Avatar as UIAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/lib/types";
 import { useState } from "react";

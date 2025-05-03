@@ -6,13 +6,13 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
-import { Loader2, Copy, CheckCircle, Upload } from "lucide-react";
+import { Loader2, Copy, CheckCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AvatarPicker } from "@/components/AvatarPicker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import AvataarCustomizer, { AvataarConfig } from "@/components/AvataarCustomizer";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,9 +34,27 @@ const Profile = () => {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [avatarTab, setAvatarTab] = useState<"preset" | "custom">("preset");
+  const [activeTab, setActiveTab] = useState<"customize">("customize");
+  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Try to parse the current avatar_url as an Avataar config if it exists
+  const getCurrentAvataarConfig = (): AvataarConfig | undefined => {
+    if (!avatarUrl) return undefined;
+    
+    try {
+      const config = JSON.parse(avatarUrl);
+      if (config && config.avatarStyle) {
+        return config as AvataarConfig;
+      }
+    } catch (e) {
+      // Not a valid JSON, so not an Avataar config
+      return undefined;
+    }
+    
+    return undefined;
+  };
 
   useEffect(() => {
     const getUserSession = async () => {
@@ -112,92 +130,26 @@ const Profile = () => {
     }
   }, [user, toast]);
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validImageTypes.includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload a valid image file (JPEG, PNG, GIF, WEBP)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
-    if (file.size > maxSizeInBytes) {
-      toast({
-        title: "File too large",
-        description: "Image must be less than 2MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleSaveAvataar = async (config: AvataarConfig) => {
     setIsUpdating(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${profile?.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(fileName);
+      // Convert the Avataar configuration to a JSON string
+      const avataarConfigString = JSON.stringify(config);
       
-      const publicUrl = publicUrlData.publicUrl;
-      setAvatarUrl(publicUrl);
-
+      // Save the configuration to the profile
+      setAvatarUrl(avataarConfigString);
+      
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: avataarConfigString })
         .eq("id", profile?.id);
 
       if (updateError) {
         throw updateError;
       }
-
-      toast({
-        title: "Avatar updated",
-        description: "Your avatar has been updated successfully",
-      });
-    } catch (error: any) {
-      console.error("Error uploading avatar:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to upload avatar",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSelectPresetAvatar = async (avatarUrl: string) => {
-    setIsUpdating(true);
-    try {
-      setAvatarUrl(avatarUrl);
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: avatarUrl })
-        .eq("id", profile?.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      
+      setShowAvatarCustomizer(false);
+      
       toast({
         title: "Avatar updated",
         description: "Your avatar has been updated successfully",
@@ -407,51 +359,30 @@ const Profile = () => {
               showLoadingState={isUpdating}
             />
             
-            <Tabs value={avatarTab} onValueChange={(v) => setAvatarTab(v as "preset" | "custom")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="preset">Preset Avatars</TabsTrigger>
-                <TabsTrigger value="custom">Custom Upload</TabsTrigger>
-              </TabsList>
-              <TabsContent value="preset" className="mt-4">
-                <AvatarPicker
-                  selectedAvatar={avatarUrl}
-                  onSelect={handleSelectPresetAvatar}
+            <Button
+              onClick={() => setShowAvatarCustomizer(true)}
+              variant="outline"
+              className="mt-2"
+            >
+              Customize Avatar
+            </Button>
+
+            {/* Avatar Customizer Dialog */}
+            <Dialog 
+              open={showAvatarCustomizer} 
+              onOpenChange={setShowAvatarCustomizer}
+            >
+              <DialogContent className="max-w-4xl w-11/12 max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Customize Your Avatar</DialogTitle>
+                </DialogHeader>
+                <AvataarCustomizer
+                  initialConfig={getCurrentAvataarConfig()}
+                  onSave={handleSaveAvataar}
+                  onCancel={() => setShowAvatarCustomizer(false)}
                 />
-              </TabsContent>
-              <TabsContent value="custom" className="mt-4">
-                <div className="flex space-x-2">
-                  <Input
-                    type="file"
-                    id="avatar-upload"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                    disabled={isUpdating}
-                  />
-                  <Label 
-                    htmlFor="avatar-upload" 
-                    className={`${isUpdating 
-                      ? 'bg-secondary/50' 
-                      : 'bg-secondary hover:bg-secondary/80'} text-secondary-foreground rounded-md px-4 py-2 cursor-pointer transition-colors flex items-center w-full justify-center`}
-                  >
-                    {isUpdating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload New Avatar
-                      </>
-                    )}
-                  </Label>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Maximum file size: 2MB. Accepted formats: JPEG, PNG, GIF, WEBP
-                </p>
-              </TabsContent>
-            </Tabs>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Username */}
