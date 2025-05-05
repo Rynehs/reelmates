@@ -87,8 +87,24 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
         xmlns="http://www.w3.org/2000/svg"
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Face/Head */}
+        {/* Background Circle for face */}
         <circle cx="140" cy="120" r="60" fill={skinFill} />
+
+        {/* Simple hair based on topType - render BEHIND face features */}
+        {topType.includes('LongHair') && (
+          <path 
+            d="M80,120 C80,80 100,60 140,60 C180,60 200,80 200,120 V170 H80 V120 Z" 
+            fill={hairFill}
+            stroke="none"
+          />
+        )}
+        {topType.includes('ShortHair') && (
+          <path 
+            d="M90,90 C100,60 120,50 140,50 C160,50 180,60 190,90 C200,120 190,130 190,130 H90 C90,130 80,120 90,90 Z" 
+            fill={hairFill}
+            stroke="none"
+          />
+        )}
 
         {/* Eyes based on eyeType */}
         {eyeType === 'Close' ? (
@@ -103,14 +119,15 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
           </>
         ) : (
           <>
-            <circle cx="120" cy="110" r="5" fill="white" />
-            <circle cx="120" cy="110" r="2.5" fill="black" />
-            <circle cx="160" cy="110" r="5" fill="white" />
-            <circle cx="160" cy="110" r="2.5" fill="black" />
+            {/* Default eyes with white background to cover any hair behind them */}
+            <circle cx="120" cy="110" r="6" fill="white" />
+            <circle cx="120" cy="110" r="3" fill="black" />
+            <circle cx="160" cy="110" r="6" fill="white" />
+            <circle cx="160" cy="110" r="3" fill="black" />
           </>
         )}
 
-        {/* Eyebrows based on eyebrowType */}
+        {/* Eyebrows based on eyebrowType - render ON TOP of eyes */}
         {eyebrowType === 'Angry' ? (
           <>
             <path d="M110,95 L130,100" stroke="black" strokeWidth="2" />
@@ -139,23 +156,7 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
           <path d="M120,140 Q140,150 160,140" stroke="black" fill="transparent" strokeWidth="2" />
         )}
 
-        {/* Simple hair based on topType */}
-        {topType.includes('LongHair') && (
-          <path 
-            d="M80,120 C80,80 100,60 140,60 C180,60 200,80 200,120 V170 H80 V120 Z" 
-            fill={hairFill}
-            stroke="none"
-          />
-        )}
-        {topType.includes('ShortHair') && (
-          <path 
-            d="M90,90 C100,60 120,50 140,50 C160,50 180,60 190,90 C200,120 190,130 190,130 H90 C90,130 80,120 90,90 Z" 
-            fill={hairFill}
-            stroke="none"
-          />
-        )}
-
-        {/* Facial Hair based on facialHairType */}
+        {/* Facial Hair based on facialHairType - render ON TOP of face */}
         {facialHairType === 'BeardMedium' && (
           <path
             d="M100,130 C120,180 160,180 180,130 V150 C160,190 120,190 100,150 V130 Z"
@@ -171,7 +172,16 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
           />
         )}
 
-        {/* Accessories based on accessoriesType */}
+        {/* Winter Hat on top if selected */}
+        {topType === 'WinterHat1' && (
+          <g>
+            <rect x="90" y="50" width="100" height="50" rx="5" fill={hairFill} />
+            <ellipse cx="140" cy="50" rx="50" ry="20" fill={hairFill} />
+            <circle cx="140" cy="35" r="10" fill="#FFFFFF" />
+          </g>
+        )}
+
+        {/* Accessories based on accessoriesType - render LAST to ensure they're on top */}
         {accessoriesType === 'Round' && (
           <>
             <circle cx="120" cy="110" r="15" stroke="black" strokeWidth="2" fill="transparent" />
@@ -184,6 +194,13 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
             <rect x="105" y="100" width="30" height="20" rx="5" fill="#333" />
             <rect x="145" y="100" width="30" height="20" rx="5" fill="#333" />
             <line x1="135" y1="105" x2="145" y2="105" stroke="#333" strokeWidth="2" />
+          </>
+        )}
+        {accessoriesType === 'Prescription02' && (
+          <>
+            <circle cx="120" cy="110" r="14" stroke="#333" strokeWidth="2" fill="transparent" />
+            <circle cx="160" cy="110" r="14" stroke="#333" strokeWidth="2" fill="transparent" />
+            <line x1="134" y1="110" x2="146" y2="110" stroke="#333" strokeWidth="2" />
           </>
         )}
 
@@ -215,6 +232,12 @@ export const AvataarRenderer: React.FC<AvataarConfig & { style?: React.CSSProper
             stroke="#333"
             strokeWidth="5"
             fill="none"
+          />
+        )}
+        {clotheType === 'ShirtScoopNeck' && (
+          <path
+            d="M115,180 C130,200 150,200 165,180"
+            fill="#FFFFFF"
           />
         )}
 
