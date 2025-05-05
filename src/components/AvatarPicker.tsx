@@ -22,7 +22,7 @@ export const isAvataarConfig = (value: string): boolean => {
 };
 
 // Create some sample avataar configurations for predefined options
-const predefinedAvatars = [
+const predefinedAvatars: AvataarConfig[] = [
   {
     avatarStyle: 'Circle',
     topType: 'ShortHairShortRound',
