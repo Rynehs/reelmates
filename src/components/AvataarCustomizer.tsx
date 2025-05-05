@@ -1,12 +1,11 @@
-
 import { useState } from "react";
+import Avatar from "avataaars";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import AvataarRenderer from "./AvataarRenderer";
 
 // Define the avataar configuration type
 export type AvataarConfig = {
@@ -50,6 +49,10 @@ const avataarOptions = {
   hairColor: [
     'Auburn', 'Black', 'Blonde', 'BlondeGolden', 'Brown', 'BrownDark', 'PastelPink', 
     'Platinum', 'Red', 'SilverGray'
+  ],
+  hatColor: [
+    'Black', 'Blue01', 'Blue02', 'Blue03', 'Gray01', 'Gray02', 'Heather', 'PastelBlue', 
+    'PastelGreen', 'PastelOrange', 'PastelRed', 'PastelYellow', 'Pink', 'Red', 'White'
   ],
   facialHairType: [
     'Blank', 'BeardMedium', 'BeardLight', 'BeardMajestic', 'MoustacheFancy', 'MoustacheMagnum'
@@ -116,15 +119,25 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
   };
 
   // Determine if we need to show certain options based on the current configuration
+  const showHatColor = config.topType.includes('Hat') || config.topType.includes('Winter');
   const showFacialHairColor = config.facialHairType !== 'Blank';
   const showGraphicType = config.clotheType === 'GraphicShirt';
 
-  // Create a modified config for rendering that includes only the relevant properties
+  // Create a modified config for rendering that doesn't include hatColor when not needed
   const getAvatarProps = (customConfig: Partial<AvataarConfig> = {}) => {
-    return {
+    const baseProps = {
+      style: { width: '100%', height: '100%' },
       ...config,
       ...customConfig
     };
+    
+    // Only include hatColor when it's needed
+    if (!(baseProps.topType.includes('Hat') || baseProps.topType.includes('Winter'))) {
+      const { hatColor, ...rest } = baseProps;
+      return rest;
+    }
+    
+    return baseProps;
   };
 
   return (
@@ -132,9 +145,8 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
       {/* Preview */}
       <div className="flex flex-col items-center gap-4 w-full md:w-1/3">
         <div className="h-60 w-60 md:h-72 md:w-72 rounded-full bg-muted p-2 overflow-hidden">
-          <AvataarRenderer
+          <Avatar
             {...getAvatarProps()}
-            style={{ width: '100%', height: '100%' }}
           />
         </div>
         <div className="flex gap-2 w-full">
@@ -185,7 +197,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('topType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: type,
                             accessoriesType: 'Blank',
@@ -233,6 +245,38 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                   ))}
                 </RadioGroup>
               </div>
+
+              {showHatColor && (
+                <div>
+                  <Label className="block mb-2">Hat Color</Label>
+                  <RadioGroup 
+                    value={config.hatColor || 'Red'}
+                    onValueChange={value => updateConfig('hatColor', value)}
+                    className="grid grid-cols-5 gap-2"
+                  >
+                    {avataarOptions.hatColor.map(color => (
+                      <div key={color} className="flex flex-col items-center gap-1">
+                        <Label
+                          htmlFor={`hat-${color}`}
+                          className="cursor-pointer"
+                        >
+                          <div className={cn(
+                            "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
+                            config.hatColor === color ? "border-primary" : "border-transparent"
+                          )}>
+                            <div 
+                              className="h-6 w-6 rounded-full" 
+                              style={{ backgroundColor: colorToHex(color) }}
+                            />
+                          </div>
+                          <div className="text-xs text-center mt-1">{color.replace(/([A-Z])/g, ' $1').trim()}</div>
+                        </Label>
+                        <RadioGroupItem value={color} id={`hat-${color}`} className="sr-only" />
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
 
               <div>
                 <Label className="block mb-2">Skin Tone</Label>
@@ -282,7 +326,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('facialHairType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: config.topType,
                             accessoriesType: 'Blank',
@@ -351,7 +395,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     onClick={() => updateConfig('accessoriesType', type)}
                   >
                     <div className="h-16 w-16 mx-auto relative">
-                      <AvataarRenderer
+                      <Avatar
                         {...getAvatarProps({
                           topType: 'ShortHairShortRound',
                           accessoriesType: type,
@@ -387,7 +431,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('clotheType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -396,7 +440,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                             clotheColor: config.clotheColor,
                             graphicType: config.graphicType || 'Bat'
                           })}
-                        />
+                      />
                         {config.clotheType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
                             <Check className="h-3 w-3 text-white" />
@@ -453,7 +497,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         onClick={() => updateConfig('graphicType', type)}
                       >
                         <div className="h-16 w-16 mx-auto relative">
-                          <AvataarRenderer
+                          <Avatar
                             {...getAvatarProps({
                               topType: 'NoHair',
                               accessoriesType: 'Blank',
@@ -494,7 +538,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('eyeType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -530,7 +574,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('eyebrowType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -566,7 +610,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       onClick={() => updateConfig('mouthType', type)}
                     >
                       <div className="h-16 w-16 mx-auto relative">
-                        <AvataarRenderer
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
