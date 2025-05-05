@@ -249,7 +249,7 @@ const UserProfile = () => {
                     name: userData?.username || "User", 
                     avatar_url: userData?.avatar_url 
                   }} 
-                  size="lg"
+                  size="xl"
                   className="mb-4"
                 />
                 <h2 className="text-xl font-bold mb-2">{userData?.username || "User"}</h2>
