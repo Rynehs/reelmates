@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import CustomAvataar from "./CustomAvataar"; // Changed from Avatar to CustomAvataar
+import Avatar from "avataaars";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -146,7 +147,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           "rounded-full bg-muted p-2 overflow-hidden",
           isMobile ? "h-48 w-48" : "h-60 w-60 md:h-72 md:w-72"
         )}>
-          <CustomAvataar
+          <Avatar
             {...getAvatarProps()}
           />
         </div>
@@ -207,7 +208,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: type,
                             accessoriesType: 'Blank',
@@ -342,7 +343,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: config.topType,
                             accessoriesType: 'Blank',
@@ -417,7 +418,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       "mx-auto relative",
                       isMobile ? "h-12 w-12" : "h-16 w-16"
                     )}>
-                      <CustomAvataar
+                      <Avatar
                         {...getAvatarProps({
                           topType: 'ShortHairShortRound',
                           accessoriesType: type,
@@ -459,7 +460,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -531,7 +532,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                           "mx-auto relative",
                           isMobile ? "h-12 w-12" : "h-16 w-16"
                         )}>
-                          <CustomAvataar
+                          <Avatar
                             {...getAvatarProps({
                               topType: 'NoHair',
                               accessoriesType: 'Blank',
@@ -578,7 +579,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -620,7 +621,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',
@@ -662,7 +663,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         "mx-auto relative",
                         isMobile ? "h-12 w-12" : "h-16 w-16"
                       )}>
-                        <CustomAvataar
+                        <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
                             accessoriesType: 'Blank',

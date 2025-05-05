@@ -3,7 +3,7 @@ import { Avatar as UIAvatar, AvatarFallback, AvatarImage } from "@/components/ui
 import { User } from "@/lib/types";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import CustomAvataar from "./CustomAvataar"; // Updated from Avatar to CustomAvataar
+import Avatar from "avataaars";
 
 // Function to check if a string is a valid Avataar config JSON
 export const isAvataarConfig = (value: string): boolean => {
@@ -81,7 +81,7 @@ const UserAvatar = ({
       const config = JSON.parse(user.avatar_url);
       return (
         <div className="flex items-center justify-center h-full w-full">
-          <CustomAvataar
+          <Avatar
             style={{ width: '100%', height: '100%' }}
             {...config}
           />
