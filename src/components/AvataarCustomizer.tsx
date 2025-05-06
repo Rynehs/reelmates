@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Avatar from "avataaars";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -7,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 // Define the avataar configuration type
 export type AvataarConfig = {
@@ -24,7 +22,6 @@ export type AvataarConfig = {
   eyebrowType: string;
   mouthType: string;
   skinColor: string;
-  hatColor?: string; // Add hatColor as optional property
 };
 
 // Define the props for the AvataarCustomizer component
@@ -106,14 +103,12 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
     eyeType: 'Default',
     eyebrowType: 'Default',
     mouthType: 'Default',
-    skinColor: 'Light',
-    hatColor: 'Red' // Default hatColor
+    skinColor: 'Light'
   };
 
   // Initialize with provided config or default
   const [config, setConfig] = useState<AvataarConfig>(initialConfig || defaultConfig);
   const [activeTab, setActiveTab] = useState("topType");
-  const isMobile = useIsMobile();
 
   // Update a single property of the configuration
   const updateConfig = (property: string, value: string) => {
@@ -136,6 +131,12 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
       ...customConfig
     };
     
+    // Only include hatColor when it's needed
+    if (!(baseProps.topType.includes('Hat') || baseProps.topType.includes('Winter'))) {
+      const { hatColor, ...rest } = baseProps;
+      return rest;
+    }
+    
     return baseProps;
   };
 
@@ -143,10 +144,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
     <div className="flex flex-col md:flex-row gap-6 w-full">
       {/* Preview */}
       <div className="flex flex-col items-center gap-4 w-full md:w-1/3">
-        <div className={cn(
-          "rounded-full bg-muted p-2 overflow-hidden",
-          isMobile ? "h-48 w-48" : "h-60 w-60 md:h-72 md:w-72"
-        )}>
+        <div className="h-60 w-60 md:h-72 md:w-72 rounded-full bg-muted p-2 overflow-hidden">
           <Avatar
             {...getAvatarProps()}
           />
@@ -175,10 +173,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className={cn(
-            "grid gap-1",
-            isMobile ? "grid-cols-3" : "grid-cols-3 md:grid-cols-5"
-          )}>
+          <TabsList className="grid grid-cols-3 md:grid-cols-5 gap-1">
             <TabsTrigger value="topType">Head</TabsTrigger>
             <TabsTrigger value="facialHair">Facial Hair</TabsTrigger>
             <TabsTrigger value="accessories">Accessories</TabsTrigger>
@@ -187,14 +182,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           </TabsList>
 
           {/* Head Tab */}
-          <TabsContent value="topType" className="max-h-80 overflow-y-auto">
+          <TabsContent value="topType" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <Label className="block mb-2">Hair Style</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-                )}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {avataarOptions.topType.map(type => (
                     <div 
                       key={type}
@@ -204,10 +196,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('topType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: type,
@@ -273,7 +262,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         >
                           <div className={cn(
                             "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
-                            (config.hatColor || 'Red') === color ? "border-primary" : "border-transparent"
+                            config.hatColor === color ? "border-primary" : "border-transparent"
                           )}>
                             <div 
                               className="h-6 w-6 rounded-full" 
@@ -322,14 +311,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           </TabsContent>
 
           {/* Facial Hair Tab */}
-          <TabsContent value="facialHair" className="max-h-80 overflow-y-auto">
+          <TabsContent value="facialHair" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <Label className="block mb-2">Facial Hair Style</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-                )}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {avataarOptions.facialHairType.map(type => (
                     <div 
                       key={type}
@@ -339,10 +325,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('facialHairType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: config.topType,
@@ -398,13 +381,10 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           </TabsContent>
 
           {/* Accessories Tab */}
-          <TabsContent value="accessories" className="max-h-80 overflow-y-auto">
+          <TabsContent value="accessories" className="max-h-96 overflow-y-auto">
             <div>
               <Label className="block mb-2">Accessories</Label>
-              <div className={cn(
-                "grid gap-2",
-                isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-              )}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {avataarOptions.accessoriesType.map(type => (
                   <div 
                     key={type}
@@ -414,10 +394,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     )}
                     onClick={() => updateConfig('accessoriesType', type)}
                   >
-                    <div className={cn(
-                      "mx-auto relative",
-                      isMobile ? "h-12 w-12" : "h-16 w-16"
-                    )}>
+                    <div className="h-16 w-16 mx-auto relative">
                       <Avatar
                         {...getAvatarProps({
                           topType: 'ShortHairShortRound',
@@ -439,14 +416,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           </TabsContent>
 
           {/* Clothes Tab */}
-          <TabsContent value="clothes" className="max-h-80 overflow-y-auto">
+          <TabsContent value="clothes" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <Label className="block mb-2">Clothes Style</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-                )}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {avataarOptions.clotheType.map(type => (
                     <div 
                       key={type}
@@ -456,10 +430,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('clotheType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
@@ -469,7 +440,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                             clotheColor: config.clotheColor,
                             graphicType: config.graphicType || 'Bat'
                           })}
-                        />
+                      />
                         {config.clotheType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
                             <Check className="h-3 w-3 text-white" />
@@ -515,10 +486,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
               {showGraphicType && (
                 <div>
                   <Label className="block mb-2">Graphic</Label>
-                  <div className={cn(
-                    "grid gap-2",
-                    isMobile ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-4"
-                  )}>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {avataarOptions.graphicType.map(type => (
                       <div 
                         key={type}
@@ -528,10 +496,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                         )}
                         onClick={() => updateConfig('graphicType', type)}
                       >
-                        <div className={cn(
-                          "mx-auto relative",
-                          isMobile ? "h-12 w-12" : "h-16 w-16"
-                        )}>
+                        <div className="h-16 w-16 mx-auto relative">
                           <Avatar
                             {...getAvatarProps({
                               topType: 'NoHair',
@@ -558,14 +523,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
           </TabsContent>
 
           {/* Face Tab */}
-          <TabsContent value="face" className="max-h-80 overflow-y-auto">
+          <TabsContent value="face" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
                 <Label className="block mb-2">Eye Type</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-4"
-                )}>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {avataarOptions.eyeType.map(type => (
                     <div 
                       key={type}
@@ -575,10 +537,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('eyeType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
@@ -604,10 +563,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
 
               <div>
                 <Label className="block mb-2">Eyebrow Type</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-4"
-                )}>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {avataarOptions.eyebrowType.map(type => (
                     <div 
                       key={type}
@@ -617,10 +573,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('eyebrowType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
@@ -646,10 +599,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
 
               <div>
                 <Label className="block mb-2">Mouth Type</Label>
-                <div className={cn(
-                  "grid gap-2",
-                  isMobile ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-4"
-                )}>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {avataarOptions.mouthType.map(type => (
                     <div 
                       key={type}
@@ -659,10 +609,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       )}
                       onClick={() => updateConfig('mouthType', type)}
                     >
-                      <div className={cn(
-                        "mx-auto relative",
-                        isMobile ? "h-12 w-12" : "h-16 w-16"
-                      )}>
+                      <div className="h-16 w-16 mx-auto relative">
                         <Avatar
                           {...getAvatarProps({
                             topType: 'NoHair',
