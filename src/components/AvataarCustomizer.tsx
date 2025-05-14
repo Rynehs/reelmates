@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import Avatar from "avataaars";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -22,6 +23,7 @@ export type AvataarConfig = {
   eyebrowType: string;
   mouthType: string;
   skinColor: string;
+  hatColor?: string; // Adding the missing hatColor property
 };
 
 // Define the props for the AvataarCustomizer component

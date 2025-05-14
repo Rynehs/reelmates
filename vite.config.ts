@@ -13,7 +13,16 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react({
       // Configure to work with React 17
-      jsxRuntime: "classic"
+      jsxImportSource: undefined, // Use React 17's JSX transform
+      swcOptions: {
+        jsc: {
+          transform: {
+            react: {
+              runtime: "classic"
+            }
+          }
+        }
+      }
     }),
     mode === 'development' &&
     componentTagger(),
