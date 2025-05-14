@@ -22,6 +22,7 @@ export type AvataarConfig = {
   eyebrowType: string;
   mouthType: string;
   skinColor: string;
+  hatColor?: string; // Adding hatColor as optional property
 };
 
 // Define the props for the AvataarCustomizer component
@@ -103,7 +104,8 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
     eyeType: 'Default',
     eyebrowType: 'Default',
     mouthType: 'Default',
-    skinColor: 'Light'
+    skinColor: 'Light',
+    hatColor: 'Red' // Add default hatColor
   };
 
   // Initialize with provided config or default
@@ -123,19 +125,13 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
   const showFacialHairColor = config.facialHairType !== 'Blank';
   const showGraphicType = config.clotheType === 'GraphicShirt';
 
-  // Create a modified config for rendering that doesn't include hatColor when not needed
+  // Create a modified config for rendering that includes all necessary properties
   const getAvatarProps = (customConfig: Partial<AvataarConfig> = {}) => {
     const baseProps = {
       style: { width: '100%', height: '100%' },
       ...config,
       ...customConfig
     };
-    
-    // Only include hatColor when it's needed
-    if (!(baseProps.topType.includes('Hat') || baseProps.topType.includes('Winter'))) {
-      const { hatColor, ...rest } = baseProps;
-      return rest;
-    }
     
     return baseProps;
   };
@@ -144,7 +140,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
     <div className="flex flex-col md:flex-row gap-6 w-full">
       {/* Preview */}
       <div className="flex flex-col items-center gap-4 w-full md:w-1/3">
-        <div className="h-60 w-60 md:h-72 md:w-72 rounded-full bg-muted p-2 overflow-hidden">
+        <div className="h-60 w-60 md:h-72 md:w-72 mx-auto rounded-full bg-muted p-2 overflow-hidden">
           <Avatar
             {...getAvatarProps()}
           />
@@ -186,7 +182,7 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
             <div className="space-y-4">
               <div>
                 <Label className="block mb-2">Hair Style</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {avataarOptions.topType.map(type => (
                     <div 
                       key={type}
@@ -310,7 +306,8 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
             </div>
           </TabsContent>
 
-          {/* Facial Hair Tab */}
+          {/* Other tabs content remain mostly the same */}
+          {/* ... keep existing code (facial hair, accessories, clothes, face tabs) */}
           <TabsContent value="facialHair" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
@@ -380,7 +377,6 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
             </div>
           </TabsContent>
 
-          {/* Accessories Tab */}
           <TabsContent value="accessories" className="max-h-96 overflow-y-auto">
             <div>
               <Label className="block mb-2">Accessories</Label>
@@ -415,7 +411,6 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
             </div>
           </TabsContent>
 
-          {/* Clothes Tab */}
           <TabsContent value="clothes" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
@@ -522,7 +517,6 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
             </div>
           </TabsContent>
 
-          {/* Face Tab */}
           <TabsContent value="face" className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               <div>
@@ -640,7 +634,8 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
   );
 };
 
-// Helper function to convert color names to hex values
+// Helper functions for colors remain the same
+// ... keep existing code (colorToHex and skinColorToHex functions)
 const colorToHex = (colorName: string): string => {
   const colorMap: Record<string, string> = {
     'Auburn': '#A52A2A',
@@ -671,7 +666,6 @@ const colorToHex = (colorName: string): string => {
   return colorMap[colorName] || '#000000';
 };
 
-// Helper function for skin tone colors
 const skinColorToHex = (colorName: string): string => {
   const skinColorMap: Record<string, string> = {
     'Tanned': '#FD9841',

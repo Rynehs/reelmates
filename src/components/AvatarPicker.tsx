@@ -6,13 +6,13 @@ import { cn } from "@/lib/utils";
 
 // List of predefined avatar images
 const predefinedAvatars = [
-  "/src/public/avatars/blue-avatar.png",
-  "/src/public/avatars/green-avatar.png",
-  "/src/public/avatars/orange-avatar.png",
-  "/src/public/avatars/purple-avatar.png",
-  "/src/public/avatars/red-avatar.png",
-  "/src/public/avatars/user-round.svg",
-  "/src/public/avatars/circle-user.svg",
+  "/avatars/blue-avatar.png",
+  "/avatars/green-avatar.png",
+  "/avatars/orange-avatar.png",
+  "/avatars/purple-avatar.png",
+  "/avatars/red-avatar.png",
+  "/avatars/user-round.svg",
+  "/avatars/circle-user.svg",
 ];
 
 interface AvatarPickerProps {
