@@ -1,19 +1,9 @@
-
 import { Avatar as UIAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/lib/types";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { isPredefinedAvatar, isAvataarConfig } from "./AvatarPicker";
 import Avatar from "avataaars";
-
-// Function to check if a string is a valid Avataar config JSON
-export const isAvataarConfig = (value: string): boolean => {
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === 'object' && 'avatarStyle' in parsed;
-  } catch (e) {
-    return false;
-  }
-};
 
 interface UserAvatarProps {
   user: Partial<User>;

@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -11,20 +10,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [
-    react({
-      // Configure to work with React 17
-      jsxImportSource: undefined, // Use React 17's JSX transform
-      // @ts-ignore - SWC options for React 17 compatibility
-      swcOptions: {
-        jsc: {
-          transform: {
-            react: {
-              runtime: "classic"
-            }
-          }
-        }
-      }
-    }),
+    react(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
@@ -33,7 +19,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  optimizeDeps: {
-    exclude: ['avataaars'] // Exclude avataaars from optimization to avoid issues
-  }
 }));
