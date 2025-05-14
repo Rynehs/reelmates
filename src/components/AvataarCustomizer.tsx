@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Avatar from "avataaars";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -23,7 +22,6 @@ export type AvataarConfig = {
   eyebrowType: string;
   mouthType: string;
   skinColor: string;
-  hatColor?: string;
 };
 
 // Define the props for the AvataarCustomizer component
@@ -125,14 +123,30 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
   const showFacialHairColor = config.facialHairType !== 'Blank';
   const showGraphicType = config.clotheType === 'GraphicShirt';
 
+  // Create a modified config for rendering that doesn't include hatColor when not needed
+  const getAvatarProps = (customConfig: Partial<AvataarConfig> = {}) => {
+    const baseProps = {
+      style: { width: '100%', height: '100%' },
+      ...config,
+      ...customConfig
+    };
+    
+    // Only include hatColor when it's needed
+    if (!(baseProps.topType.includes('Hat') || baseProps.topType.includes('Winter'))) {
+      const { hatColor, ...rest } = baseProps;
+      return rest;
+    }
+    
+    return baseProps;
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-6 w-full">
       {/* Preview */}
       <div className="flex flex-col items-center gap-4 w-full md:w-1/3">
         <div className="h-60 w-60 md:h-72 md:w-72 rounded-full bg-muted p-2 overflow-hidden">
           <Avatar
-            style={{ width: '100%', height: '100%' }}
-            {...config}
+            {...getAvatarProps()}
           />
         </div>
         <div className="flex gap-2 w-full">
@@ -184,18 +198,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType={type}
-                          accessoriesType='Blank'
-                          hairColor={config.hairColor}
-                          facialHairType='Blank'
-                          clotheType='BlazerShirt'
-                          eyeType='Default'
-                          eyebrowType='Default'
-                          mouthType='Default'
-                          skinColor={config.skinColor}
-                          hatColor={config.hatColor}
+                          {...getAvatarProps({
+                            topType: type,
+                            accessoriesType: 'Blank',
+                            facialHairType: 'Blank'
+                          })}
                         />
                         {config.topType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -320,18 +327,12 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType={config.topType}
-                          accessoriesType='Blank'
-                          hairColor={config.hairColor}
-                          facialHairType={type}
-                          facialHairColor={config.facialHairColor || config.hairColor}
-                          clotheType='BlazerShirt'
-                          eyeType='Default'
-                          eyebrowType='Default'
-                          mouthType='Default'
-                          skinColor={config.skinColor}
+                          {...getAvatarProps({
+                            topType: config.topType,
+                            accessoriesType: 'Blank',
+                            facialHairType: type,
+                            facialHairColor: config.facialHairColor || config.hairColor
+                          })}
                         />
                         {config.facialHairType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -395,17 +396,11 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                   >
                     <div className="h-16 w-16 mx-auto relative">
                       <Avatar
-                        style={{ width: '100%', height: '100%' }}
-                        avatarStyle='Circle'
-                        topType='ShortHairShortRound'
-                        accessoriesType={type}
-                        hairColor={config.hairColor}
-                        facialHairType='Blank'
-                        clotheType='BlazerShirt'
-                        eyeType='Default'
-                        eyebrowType='Default'
-                        mouthType='Default'
-                        skinColor={config.skinColor}
+                        {...getAvatarProps({
+                          topType: 'ShortHairShortRound',
+                          accessoriesType: type,
+                          facialHairType: 'Blank'
+                        })}
                       />
                       {config.accessoriesType === type && (
                         <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -437,19 +432,15 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType='NoHair'
-                          accessoriesType='Blank'
-                          facialHairType='Blank'
-                          clotheType={type}
-                          clotheColor={config.clotheColor}
-                          graphicType={config.graphicType || 'Bat'}
-                          eyeType='Default'
-                          eyebrowType='Default'
-                          mouthType='Default'
-                          skinColor={config.skinColor}
-                        />
+                          {...getAvatarProps({
+                            topType: 'NoHair',
+                            accessoriesType: 'Blank',
+                            facialHairType: 'Blank',
+                            clotheType: type,
+                            clotheColor: config.clotheColor,
+                            graphicType: config.graphicType || 'Bat'
+                          })}
+                      />
                         {config.clotheType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
                             <Check className="h-3 w-3 text-white" />
@@ -507,18 +498,14 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                       >
                         <div className="h-16 w-16 mx-auto relative">
                           <Avatar
-                            style={{ width: '100%', height: '100%' }}
-                            avatarStyle='Circle'
-                            topType='NoHair'
-                            accessoriesType='Blank'
-                            facialHairType='Blank'
-                            clotheType='GraphicShirt'
-                            clotheColor={config.clotheColor}
-                            graphicType={type}
-                            eyeType='Default'
-                            eyebrowType='Default'
-                            mouthType='Default'
-                            skinColor={config.skinColor}
+                            {...getAvatarProps({
+                              topType: 'NoHair',
+                              accessoriesType: 'Blank',
+                              facialHairType: 'Blank',
+                              clotheType: 'GraphicShirt',
+                              clotheColor: config.clotheColor,
+                              graphicType: type
+                            })}
                           />
                           {config.graphicType === type && (
                             <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -552,16 +539,15 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType='NoHair'
-                          accessoriesType='Blank'
-                          facialHairType='Blank'
-                          clotheType='BlazerShirt'
-                          eyeType={type}
-                          eyebrowType='Default'
-                          mouthType='Default'
-                          skinColor={config.skinColor}
+                          {...getAvatarProps({
+                            topType: 'NoHair',
+                            accessoriesType: 'Blank',
+                            facialHairType: 'Blank',
+                            clotheType: 'BlazerShirt',
+                            eyeType: type,
+                            eyebrowType: 'Default',
+                            mouthType: 'Default'
+                          })}
                         />
                         {config.eyeType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -589,16 +575,15 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType='NoHair'
-                          accessoriesType='Blank'
-                          facialHairType='Blank'
-                          clotheType='BlazerShirt'
-                          eyeType='Default'
-                          eyebrowType={type}
-                          mouthType='Default'
-                          skinColor={config.skinColor}
+                          {...getAvatarProps({
+                            topType: 'NoHair',
+                            accessoriesType: 'Blank',
+                            facialHairType: 'Blank',
+                            clotheType: 'BlazerShirt',
+                            eyeType: 'Default',
+                            eyebrowType: type,
+                            mouthType: 'Default'
+                          })}
                         />
                         {config.eyebrowType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
@@ -626,16 +611,15 @@ export const AvataarCustomizer = ({ initialConfig, onSave, onCancel }: AvataarCu
                     >
                       <div className="h-16 w-16 mx-auto relative">
                         <Avatar
-                          style={{ width: '100%', height: '100%' }}
-                          avatarStyle='Circle'
-                          topType='NoHair'
-                          accessoriesType='Blank'
-                          facialHairType='Blank'
-                          clotheType='BlazerShirt'
-                          eyeType='Default'
-                          eyebrowType='Default'
-                          mouthType={type}
-                          skinColor={config.skinColor}
+                          {...getAvatarProps({
+                            topType: 'NoHair',
+                            accessoriesType: 'Blank',
+                            facialHairType: 'Blank',
+                            clotheType: 'BlazerShirt',
+                            eyeType: 'Default',
+                            eyebrowType: 'Default',
+                            mouthType: type
+                          })}
                         />
                         {config.mouthType === type && (
                           <div className="absolute top-0 right-0 bg-primary rounded-full p-0.5">
