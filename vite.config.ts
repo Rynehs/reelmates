@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     react({
       // Configure to work with React 17
       jsxImportSource: undefined, // Use React 17's JSX transform
+      // @ts-ignore - SWC options for React 17 compatibility
       swcOptions: {
         jsc: {
           transform: {
@@ -32,4 +33,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ['avataaars'] // Exclude avataaars from optimization to avoid issues
+  }
 }));
