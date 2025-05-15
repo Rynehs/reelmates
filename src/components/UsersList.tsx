@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -22,17 +21,17 @@ interface UserWithFollowers {
 
 const UsersList = () => {
   const { toast } = useToast();
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
+  const { data: currentUser } = useQuery(
+    ['currentUser'],
+    async () => {
       const { data: { session } } = await supabase.auth.getSession();
       return session?.user ?? null;
-    },
-  });
+    }
+  );
 
-  const { data: users, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
-    queryKey: ['users', currentUser?.id],
-    queryFn: async () => {
+  const { data: users, isLoading: usersLoading, refetch: refetchUsers } = useQuery(
+    ['users', currentUser?.id],
+    async () => {
       if (!currentUser) return [];
       
       console.log("Fetching user profiles...");
@@ -77,12 +76,14 @@ const UsersList = () => {
       
       return profilesWithCounts;
     },
-    enabled: !!currentUser,
-  });
+    {
+      enabled: !!currentUser
+    }
+  );
 
-  const { data: following, isLoading: followingLoading, refetch: refetchFollowing } = useQuery({
-    queryKey: ['following', currentUser?.id],
-    queryFn: async () => {
+  const { data: following, isLoading: followingLoading, refetch: refetchFollowing } = useQuery(
+    ['following', currentUser?.id],
+    async () => {
       if (!currentUser) return [];
       
       console.log("Fetching user following status...");
@@ -100,8 +101,10 @@ const UsersList = () => {
       console.log("Fetched following relationships:", data?.length || 0);
       return data?.map(f => f.following_id) || [];
     },
-    enabled: !!currentUser,
-  });
+    {
+      enabled: !!currentUser
+    }
+  );
 
   const handleFollow = async (userId: string) => {
     try {

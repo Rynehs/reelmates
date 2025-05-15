@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -19,37 +18,37 @@ const Dashboard = () => {
   const [checkedOnboarding, setCheckedOnboarding] = useState(false);
   
   // Define all queries first to ensure they're always called in the same order
-  const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
-    queryKey: ['trendingMovies'],
-    queryFn: async () => {
+  const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery(
+    ['trendingMovies'],
+    async () => {
       const response = await fetchTrendingMovies();
       return response.results;
-    },
-  });
+    }
+  );
 
-  const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
-    queryKey: ['popularMovies'],
-    queryFn: async () => {
+  const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery(
+    ['popularMovies'],
+    async () => {
       const response = await fetchPopularMovies();
       return response.results;
-    },
-  });
+    }
+  );
 
-  const { data: actionMovies = [], isLoading: isActionLoading } = useQuery({
-    queryKey: ['actionMovies'],
-    queryFn: async () => {
+  const { data: actionMovies = [], isLoading: isActionLoading } = useQuery(
+    ['actionMovies'],
+    async () => {
       const response = await discoverMovies({ with_genres: '28' });
       return response.results;
-    },
-  });
+    }
+  );
 
-  const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery({
-    queryKey: ['comedyMovies'],
-    queryFn: async () => {
+  const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery(
+    ['comedyMovies'],
+    async () => {
       const response = await discoverMovies({ with_genres: '35' });
       return response.results;
-    },
-  });
+    }
+  );
 
   useEffect(() => {
     (async () => {

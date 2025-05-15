@@ -17,7 +17,15 @@ import Onboarding from './pages/Onboarding';
 import { Toaster } from "@/components/ui/toaster";
 import { NotificationsProvider } from "@/hooks/use-notifications";
 
-const queryClient = new QueryClient();
+// Initialize query client with v4 syntax
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: false
+    }
+  }
+});
 
 function App() {
   return (
