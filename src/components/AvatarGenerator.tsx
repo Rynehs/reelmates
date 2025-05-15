@@ -4,7 +4,6 @@ import Avatar from 'avataaars';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { RefreshCcw } from "lucide-react";
 import OptionSelector from './avatar-generator/OptionSelector';
 import ColorSelector from './avatar-generator/ColorSelector';
@@ -39,11 +38,13 @@ export interface AvatarConfig {
 }
 
 interface AvatarGeneratorProps {
+  initialConfig?: AvatarConfig;
+  onConfigChange?: (config: AvatarConfig) => void;
   onSave?: (config: AvatarConfig) => void;
 }
 
-const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSave }) => {
-  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>({
+const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ initialConfig, onConfigChange, onSave }) => {
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(initialConfig || {
     avatarStyle: 'Circle',
     topType: 'LongHairMiaWallace',
     accessoriesType: 'Blank',
@@ -60,7 +61,11 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSave }) => {
 
   // Update a specific property in the avatar configuration
   const updateAvatarConfig = (key: keyof AvatarConfig, value: string) => {
-    setAvatarConfig(prev => ({ ...prev, [key]: value }));
+    const updatedConfig = { ...avatarConfig, [key]: value };
+    setAvatarConfig(updatedConfig);
+    if (onConfigChange) {
+      onConfigChange(updatedConfig);
+    }
   };
 
   // Generate random avatar configuration
@@ -69,8 +74,8 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSave }) => {
       return items[Math.floor(Math.random() * items.length)];
     };
 
-    setAvatarConfig({
-      avatarStyle: 'Circle',
+    const newConfig = {
+      avatarStyle: 'Circle' as const,
       topType: getRandomItem(hairStyles.map(h => h.value)),
       accessoriesType: getRandomItem([...accessoriesTypes.map(a => a.value), 'Blank']),
       hairColor: getRandomItem(hairColors.map(c => c.value)),
@@ -82,7 +87,12 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSave }) => {
       eyebrowType: getRandomItem(eyebrowTypes.map(e => e.value)),
       mouthType: getRandomItem(mouthTypes.map(m => m.value)),
       skinColor: getRandomItem(skinColors.map(s => s.value)),
-    });
+    };
+    
+    setAvatarConfig(newConfig);
+    if (onConfigChange) {
+      onConfigChange(newConfig);
+    }
   };
 
   // Handle save button click
@@ -91,12 +101,6 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({ onSave }) => {
       onSave(avatarConfig);
     }
   };
-
-  // On component mount, optionally generate a random avatar
-  useEffect(() => {
-    // Commented out to not override initial config on mount
-    // generateRandomAvatar();
-  }, []);
 
   return (
     <div className="flex flex-col w-full gap-6 p-6">
