@@ -12,7 +12,7 @@ import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp
 import { Loader2, Copy, CheckCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import AvataarCustomizer, { AvataarConfig } from "@/components/AvataarCustomizer";
+import AvataarCustomizer, { AvatarConfig } from "@/components/AvataarCustomizer";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,13 +40,13 @@ const Profile = () => {
   const { toast } = useToast();
 
   // Try to parse the current avatar_url as an Avataar config if it exists
-  const getCurrentAvataarConfig = (): AvataarConfig | undefined => {
+  const getCurrentAvataarConfig = (): AvatarConfig | undefined => {
     if (!avatarUrl) return undefined;
     
     try {
       const config = JSON.parse(avatarUrl);
       if (config && config.avatarStyle) {
-        return config as AvataarConfig;
+        return config as AvatarConfig;
       }
     } catch (e) {
       // Not a valid JSON, so not an Avataar config
@@ -130,7 +130,7 @@ const Profile = () => {
     }
   }, [user, toast]);
 
-  const handleSaveAvataar = async (config: AvataarConfig) => {
+  const handleSaveAvataar = async (config: AvatarConfig) => {
     setIsUpdating(true);
     try {
       // Convert the Avataar configuration to a JSON string
