@@ -37,23 +37,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Try to parse the current avatar_url as an Avataar config if it exists
-  const getCurrentAvataarConfig = (): AvatarConfig | undefined => {
-    if (!avatarUrl) return undefined;
-    
-    try {
-      const config = JSON.parse(avatarUrl);
-      if (config && config.avatarStyle) {
-        return config as AvatarConfig;
-      }
-    } catch (e) {
-      // Not a valid JSON, so not an Avataar config
-      return undefined;
-    }
-    
-    return undefined;
-  };
-
   useEffect(() => {
     const getUserSession = async () => {
       const { data, error } = await supabase.auth.getSession();
