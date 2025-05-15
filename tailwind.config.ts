@@ -125,6 +125,13 @@ export default {
 				'slide-up': 'slide-up 0.4s ease-out',
 				'slide-down': 'slide-down 0.4s ease-out',
 				'pulse-soft': 'pulse-soft 2s ease-in-out infinite'
+			},
+			backgroundColor: {
+				'hsl-255-70-75': 'hsl(255, 70%, 75%)',
+				'hsl-255-70-65': 'hsl(255, 70%, 65%)'
+			},
+			textColor: {
+				'hsl-255-70-75': 'hsl(255, 70%, 75%)',
 			}
 		}
 	},
