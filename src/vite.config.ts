@@ -13,15 +13,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react({
       // Configure for React 17 compatibility
-      swcOptions: {
-        jsc: {
-          transform: {
-            react: {
-              runtime: 'classic'
-            }
-          }
-        }
-      }
+      jsxImportSource: 'react'
     }),
     mode === 'development' &&
     componentTagger(),
@@ -30,14 +22,5 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  optimizeDeps: {
-    include: ['avataaars'],
-    esbuildOptions: {
-      // Needed for avataaars to work properly
-      jsx: 'transform',
-      jsxFactory: 'React.createElement',
-      jsxFragment: 'React.Fragment'
-    }
   },
 }));

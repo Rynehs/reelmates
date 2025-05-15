@@ -16,8 +16,6 @@ import RoomDetails from "./pages/RoomDetails";
 import Onboarding from "./pages/Onboarding";
 import { Toaster } from "./components/ui/toaster";
 import { ThemeProvider } from "./components/theme-provider";
-import AvatarDemo from "./pages/AvatarDemo";
-import AvatarGeneratorPage from "./pages/AvatarGenerator";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -40,8 +38,6 @@ function App() {
             <Route path="/room/:id" element={<Room />} />
             <Route path="/room/:id/details" element={<RoomDetails />} />
             <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/avatars" element={<AvatarDemo />} />
-            <Route path="/avatar-generator" element={<AvatarGeneratorPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>

@@ -10,9 +10,8 @@ import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
 import { Loader2, Copy, CheckCircle } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import AvataarCustomizer, { AvatarConfig } from "@/components/AvataarCustomizer";
+import { AvatarPicker } from "@/components/AvatarPicker";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +33,7 @@ const Profile = () => {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"customize">("customize");
-  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -130,25 +128,21 @@ const Profile = () => {
     }
   }, [user, toast]);
 
-  const handleSaveAvataar = async (config: AvatarConfig) => {
+  const handleSaveAvatar = async (selectedAvatar: string) => {
     setIsUpdating(true);
     try {
-      // Convert the Avataar configuration to a JSON string
-      const avataarConfigString = JSON.stringify(config);
-      
-      // Save the configuration to the profile
-      setAvatarUrl(avataarConfigString);
+      setAvatarUrl(selectedAvatar);
       
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: avataarConfigString })
+        .update({ avatar_url: selectedAvatar })
         .eq("id", profile?.id);
 
       if (updateError) {
         throw updateError;
       }
       
-      setShowAvatarCustomizer(false);
+      setShowAvatarPicker(false);
       
       toast({
         title: "Avatar updated",
@@ -360,26 +354,25 @@ const Profile = () => {
             />
             
             <Button
-              onClick={() => setShowAvatarCustomizer(true)}
+              onClick={() => setShowAvatarPicker(true)}
               variant="outline"
               className="mt-2"
             >
-              Customize Avatar
+              Change Avatar
             </Button>
 
-            {/* Avatar Customizer Dialog */}
+            {/* Avatar Picker Dialog */}
             <Dialog 
-              open={showAvatarCustomizer} 
-              onOpenChange={setShowAvatarCustomizer}
+              open={showAvatarPicker} 
+              onOpenChange={setShowAvatarPicker}
             >
-              <DialogContent className="max-w-4xl w-11/12 max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Customize Your Avatar</DialogTitle>
+                  <DialogTitle>Choose an Avatar</DialogTitle>
                 </DialogHeader>
-                <AvataarCustomizer
-                  initialConfig={getCurrentAvataarConfig()}
-                  onSave={handleSaveAvataar}
-                  onCancel={() => setShowAvatarCustomizer(false)}
+                <AvatarPicker
+                  selectedAvatar={avatarUrl}
+                  onSelect={handleSaveAvatar}
                 />
               </DialogContent>
             </Dialog>
