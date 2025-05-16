@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -13,7 +14,6 @@ import { Loader2, Copy, CheckCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import AvatarCustomizer from "@/components/AvatarCustomizer";
-import { Tab } from "@/components/ui/tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Profile = () => {
