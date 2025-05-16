@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // Configure for React 17 compatibility
-      jsxRuntime: 'classic'
+      // For React 17 compatibility
+      jsxImportSource: "react"
     }),
     mode === 'development' &&
     componentTagger(),
