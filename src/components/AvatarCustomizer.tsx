@@ -1,17 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import Avatar from 'avataaars';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Save, RotateCcw } from 'lucide-react';
+import { Download, RotateCcw, Save } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 // Default avatar configuration
 const defaultAvatarConfig: AvatarConfig = {
@@ -206,6 +200,68 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(
     initialConfig || defaultAvatarConfig
   );
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  // Function to generate a random avatar configuration
+  const randomizeAvatar = () => {
+    const randomOption = <T extends string>(options: { value: T }[]): T => {
+      const randomIndex = Math.floor(Math.random() * options.length);
+      return options[randomIndex].value;
+    };
+
+    setAvatarConfig({
+      avatarStyle: randomOption(optionGroups.avatarStyle),
+      topType: randomOption(optionGroups.topType),
+      accessoriesType: randomOption(optionGroups.accessoriesType),
+      hairColor: randomOption(optionGroups.hairColor),
+      facialHairType: randomOption(optionGroups.facialHairType),
+      facialHairColor: randomOption(optionGroups.facialHairColor),
+      clotheType: randomOption(optionGroups.clotheType),
+      clotheColor: randomOption(optionGroups.clotheColor),
+      eyeType: randomOption(optionGroups.eyeType),
+      eyebrowType: randomOption(optionGroups.eyebrowType),
+      mouthType: randomOption(optionGroups.mouthType),
+      skinColor: randomOption(optionGroups.skinColor)
+    });
+  };
+
+  // Download avatar as PNG
+  const downloadAvatar = () => {
+    if (!avatarRef.current) return;
+    
+    // Convert SVG to Canvas to PNG
+    const svg = avatarRef.current.querySelector('svg');
+    if (!svg) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 300;
+    
+    const img = new Image();
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = 'my-avatar.png';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(url);
+    };
+    
+    img.src = url;
+  };
 
   // Reset to initial config or default
   const handleReset = () => {
@@ -220,169 +276,332 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
     }));
   };
 
-  // Create a select component for a specific feature
-  const FeatureSelect = ({
+  // Component for option buttons grid
+  const OptionButtons = ({
     feature,
-    label,
-    options
+    options,
+    cols = 4
   }: {
     feature: keyof AvatarConfig;
-    label: string;
     options: { value: string; label: string }[];
+    cols?: number;
   }) => (
-    <div className="space-y-2">
-      <Label htmlFor={feature}>{label}</Label>
-      <Select
-        value={avatarConfig[feature]}
-        onValueChange={(value) => updateConfig(feature, value)}
-      >
-        <SelectTrigger id={feature}>
-          <SelectValue placeholder={`Select ${label}`} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className={`grid grid-cols-${cols} gap-2`}>
+      {options.map((option) => (
+        <Button
+          key={option.value}
+          size="sm"
+          variant={avatarConfig[feature] === option.value ? "default" : "outline"}
+          className="h-auto py-1 px-2 text-xs rounded-full"
+          onClick={() => updateConfig(feature, option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
     </div>
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Avatar Preview */}
-      <div className="flex flex-col items-center justify-start">
-        <div className="w-48 h-48 md:w-64 md:h-64 border rounded-full overflow-hidden flex items-center justify-center bg-white">
-          <Avatar
-            style={{ width: '100%', height: '100%' }}
-            avatarStyle={avatarConfig.avatarStyle}
-            topType={avatarConfig.topType}
-            accessoriesType={avatarConfig.accessoriesType}
-            hairColor={avatarConfig.hairColor}
-            facialHairType={avatarConfig.facialHairType}
-            facialHairColor={avatarConfig.facialHairColor}
-            clotheType={avatarConfig.clotheType}
-            clotheColor={avatarConfig.clotheColor}
-            eyeType={avatarConfig.eyeType}
-            eyebrowType={avatarConfig.eyebrowType}
-            mouthType={avatarConfig.mouthType}
-            skinColor={avatarConfig.skinColor}
-          />
-        </div>
-        
-        <div className="mt-4 space-x-2 flex justify-center">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleReset}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
-          
-          <Button 
-            variant="default" 
-            size="sm" 
-            onClick={() => onSave(avatarConfig)}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-          
-          {onCancel && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onCancel}
-            >
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
+    <div>
+      <h2 className="text-2xl font-bold mb-6 text-center">Create and customize your personal avatar</h2>
       
-      {/* Customization Options */}
-      <div className="col-span-1 md:col-span-2">
-        <Tabs defaultValue="head">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="head">Head</TabsTrigger>
-            <TabsTrigger value="face">Face</TabsTrigger>
-            <TabsTrigger value="clothes">Clothes</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="head" className="space-y-4">
-            <FeatureSelect 
-              feature="topType" 
-              label="Hair Style" 
-              options={optionGroups.topType} 
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+        {/* Avatar Preview Section */}
+        <div className="md:col-span-2 flex flex-col items-center">
+          <div 
+            ref={avatarRef}
+            className="w-64 h-64 md:w-80 md:h-80 bg-white rounded-full overflow-hidden shadow-lg border border-gray-200 flex items-center justify-center mb-4"
+          >
+            <Avatar
+              style={{ width: '100%', height: '100%' }}
+              avatarStyle={avatarConfig.avatarStyle}
+              topType={avatarConfig.topType}
+              accessoriesType={avatarConfig.accessoriesType}
+              hairColor={avatarConfig.hairColor}
+              facialHairType={avatarConfig.facialHairType}
+              facialHairColor={avatarConfig.facialHairColor}
+              clotheType={avatarConfig.clotheType}
+              clotheColor={avatarConfig.clotheColor}
+              eyeType={avatarConfig.eyeType}
+              eyebrowType={avatarConfig.eyebrowType}
+              mouthType={avatarConfig.mouthType}
+              skinColor={avatarConfig.skinColor}
             />
-            <FeatureSelect 
-              feature="hairColor" 
-              label="Hair Color" 
-              options={optionGroups.hairColor} 
-            />
-            <FeatureSelect 
-              feature="skinColor" 
-              label="Skin Tone" 
-              options={optionGroups.skinColor} 
-            />
-            <FeatureSelect 
-              feature="avatarStyle" 
-              label="Avatar Style" 
-              options={optionGroups.avatarStyle} 
-            />
-          </TabsContent>
-          
-          <TabsContent value="face" className="space-y-4">
-            <FeatureSelect 
-              feature="accessoriesType" 
-              label="Accessories" 
-              options={optionGroups.accessoriesType} 
-            />
-            <FeatureSelect 
-              feature="facialHairType" 
-              label="Facial Hair" 
-              options={optionGroups.facialHairType} 
-            />
-            {avatarConfig.facialHairType !== 'Blank' && (
-              <FeatureSelect 
-                feature="facialHairColor" 
-                label="Facial Hair Color" 
-                options={optionGroups.facialHairColor} 
-              />
+          </div>
+
+          <div className="flex gap-2 mt-2 justify-center">
+            <Button 
+              variant="default" 
+              onClick={randomizeAvatar}
+              className="gap-1"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Randomize
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={downloadAvatar}
+              className="gap-1"
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </div>
+
+          <div className="flex gap-2 mt-4 justify-center">
+            <Button 
+              variant="default" 
+              onClick={() => onSave(avatarConfig)}
+              className="gap-1"
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            
+            {onCancel && (
+              <Button 
+                variant="ghost" 
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
             )}
-            <FeatureSelect 
-              feature="eyeType" 
-              label="Eyes" 
-              options={optionGroups.eyeType} 
-            />
-            <FeatureSelect 
-              feature="eyebrowType" 
-              label="Eyebrows" 
-              options={optionGroups.eyebrowType} 
-            />
-            <FeatureSelect 
-              feature="mouthType" 
-              label="Mouth" 
-              options={optionGroups.mouthType} 
-            />
-          </TabsContent>
-          
-          <TabsContent value="clothes" className="space-y-4">
-            <FeatureSelect 
-              feature="clotheType" 
-              label="Clothes" 
-              options={optionGroups.clotheType} 
-            />
-            <FeatureSelect 
-              feature="clotheColor" 
-              label="Clothes Color" 
-              options={optionGroups.clotheColor} 
-            />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
+
+        {/* Customization Options Section */}
+        <div className="md:col-span-3">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Customize</h3>
+          </div>
+
+          <Tabs defaultValue="head" className="w-full">
+            <TabsList className="grid grid-cols-3 w-full mb-6 bg-muted/50">
+              <TabsTrigger value="head">Head & Hair</TabsTrigger>
+              <TabsTrigger value="face">Face</TabsTrigger>
+              <TabsTrigger value="clothes">Clothes</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="head" className="space-y-6 p-4 rounded-lg border">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Hair Style</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {optionGroups.topType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.topType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('topType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Hair Color</Label>
+                  <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                    {optionGroups.hairColor.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.hairColor === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('hairColor', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Skin Tone</Label>
+                  <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                    {optionGroups.skinColor.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.skinColor === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('skinColor', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Avatar Style</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {optionGroups.avatarStyle.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.avatarStyle === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('avatarStyle', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="face" className="space-y-6 p-4 rounded-lg border">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Accessories</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {optionGroups.accessoriesType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.accessoriesType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('accessoriesType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Facial Hair</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {optionGroups.facialHairType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.facialHairType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('facialHairType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {avatarConfig.facialHairType !== 'Blank' && (
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Facial Hair Color</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {optionGroups.facialHairColor.map((option) => (
+                        <Button
+                          key={option.value}
+                          size="sm"
+                          variant={avatarConfig.facialHairColor === option.value ? "default" : "outline"}
+                          className="h-auto py-1 px-2 text-xs rounded-full"
+                          onClick={() => updateConfig('facialHairColor', option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Eyes</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {optionGroups.eyeType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.eyeType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('eyeType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Eyebrows</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {optionGroups.eyebrowType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.eyebrowType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('eyebrowType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Mouth</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {optionGroups.mouthType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.mouthType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('mouthType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>  
+            </TabsContent>
+            
+            <TabsContent value="clothes" className="space-y-6 p-4 rounded-lg border">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Clothes</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {optionGroups.clotheType.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.clotheType === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('clotheType', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Clothes Color</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {optionGroups.clotheColor.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={avatarConfig.clotheColor === option.value ? "default" : "outline"}
+                        className="h-auto py-1 px-2 text-xs rounded-full"
+                        onClick={() => updateConfig('clotheColor', option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
