@@ -1,29 +1,47 @@
-
 import React, { useState, useRef } from 'react';
 import Avatar from 'avataaars';
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Keep Label for option titles
+import { Card, CardContent } from '@/components/ui/card'; // Added from first code
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, RotateCcw, Save } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Separator } from '@/components/ui/separator'; // Added from first code
+import { ScrollArea } from '@/components/ui/scroll-area'; // Added from first code
+import { toast } from 'sonner'; // Added from first code
+import { Download, Shuffle, Save } from 'lucide-react'; // Changed RotateCcw to Shuffle
 
-// Default avatar configuration
+// Define the AvatarConfig interface if not already defined globally or in another file
+interface AvatarConfig {
+  avatarStyle: 'Circle' | 'Transparent';
+  topType: string;
+  accessoriesType: string;
+  hairColor: string;
+  facialHairType: string;
+  facialHairColor: string;
+  clotheType: string;
+  clotheColor: string;
+  eyeType: string;
+  eyebrowType: string;
+  mouthType: string;
+  skinColor: string;
+}
+
+// Default avatar configuration - adapted from first code for UI consistency
 const defaultAvatarConfig: AvatarConfig = {
   avatarStyle: 'Circle',
-  topType: 'ShortHairShortRound',
-  accessoriesType: 'Blank',
-  hairColor: 'BrownDark',
+  topType: 'LongHairMiaWallace',
+  accessoriesType: 'Prescription02',
+  hairColor: 'Brown',
   facialHairType: 'Blank',
-  facialHairColor: 'Auburn',
-  clotheType: 'BlazerShirt',
-  clotheColor: 'Blue01',
+  facialHairColor: 'Black',
+  clotheType: 'Hoodie',
+  clotheColor: 'PastelBlue',
   eyeType: 'Default',
   eyebrowType: 'Default',
-  mouthType: 'Default',
+  mouthType: 'Smile',
   skinColor: 'Light'
 };
 
-// Option groups for the customizer
+// Option groups for the customizer - retained from second code for self-containment
 const optionGroups = {
   topType: [
     { value: 'NoHair', label: 'No Hair' },
@@ -200,16 +218,15 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(
     initialConfig || defaultAvatarConfig
   );
-  const avatarRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null); // Used for download functionality
 
-  // Function to generate a random avatar configuration
   const randomizeAvatar = () => {
     const randomOption = <T extends string>(options: { value: T }[]): T => {
       const randomIndex = Math.floor(Math.random() * options.length);
       return options[randomIndex].value;
     };
 
-    setAvatarConfig({
+    const newConfig: AvatarConfig = {
       avatarStyle: randomOption(optionGroups.avatarStyle),
       topType: randomOption(optionGroups.topType),
       accessoriesType: randomOption(optionGroups.accessoriesType),
@@ -222,34 +239,50 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
       eyebrowType: randomOption(optionGroups.eyebrowType),
       mouthType: randomOption(optionGroups.mouthType),
       skinColor: randomOption(optionGroups.skinColor)
-    });
+    };
+
+    setAvatarConfig(newConfig);
+    toast.success('Avatar randomized successfully!'); // Integrated toast
   };
 
-  // Download avatar as PNG
   const downloadAvatar = () => {
-    if (!avatarRef.current) return;
-    
-    // Convert SVG to Canvas to PNG
+    if (!avatarRef.current) {
+      toast.error('Could not find avatar to download.');
+      return;
+    }
+
     const svg = avatarRef.current.querySelector('svg');
-    if (!svg) return;
-    
+    if (!svg) {
+      toast.error('SVG element not found.');
+      return;
+    }
+
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement('canvas');
     canvas.width = 300;
     canvas.height = 300;
-    
+
     const img = new Image();
+    // Using Blob for more robust SVG to image conversion
     const blob = new Blob([svgData], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    
+
     img.onload = () => {
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      ctx.fillStyle = 'white';
+      if (!ctx) {
+        toast.error('Canvas context not available.');
+        return;
+      }
+
+      // Fill background with white for transparency if avatarStyle is 'Transparent'
+      if (avatarConfig.avatarStyle === 'Transparent') {
+        ctx.fillStyle = 'transparent'; // Use transparent for actual transparency
+      } else {
+        ctx.fillStyle = 'white';
+      }
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
+
       const pngUrl = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
       downloadLink.href = pngUrl;
@@ -257,16 +290,19 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url); // Clean up the URL object
+
+      toast.success('Avatar downloaded successfully!'); // Integrated toast
     };
-    
+
+    img.onerror = () => {
+      toast.error('Failed to load avatar for download.');
+    };
+
     img.src = url;
   };
 
-  // Reset to initial config or default
-  const handleReset = () => {
-    setAvatarConfig(initialConfig || defaultAvatarConfig);
-  };
+  // No explicit handleReset needed, onCancel covers it.
 
   // Update a specific property of the avatar configuration
   const updateConfig = (key: keyof AvatarConfig, value: string) => {
@@ -276,115 +312,59 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
     }));
   };
 
-  // Component for option buttons grid
-  const OptionButtons = ({
-    feature,
-    options,
-    cols = 4
-  }: {
-    feature: keyof AvatarConfig;
-    options: { value: string; label: string }[];
-    cols?: number;
-  }) => (
-    <div className={`grid grid-cols-${cols} gap-2`}>
-      {options.map((option) => (
-        <Button
-          key={option.value}
-          size="sm"
-          variant={avatarConfig[feature] === option.value ? "default" : "outline"}
-          className="h-auto py-1 px-2 text-xs rounded-full"
-          onClick={() => updateConfig(feature, option.value)}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
-  );
-
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6 text-center">Create and customize your personal avatar</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-        {/* Avatar Preview Section */}
-        <div className="md:col-span-2 flex flex-col items-center">
-          <div 
-            ref={avatarRef}
-            className="w-64 h-64 md:w-80 md:h-80 bg-white rounded-full overflow-hidden shadow-lg border border-gray-200 flex items-center justify-center mb-4"
-          >
-            <Avatar
-              style={{ width: '100%', height: '100%' }}
-              avatarStyle={avatarConfig.avatarStyle}
-              topType={avatarConfig.topType}
-              accessoriesType={avatarConfig.accessoriesType}
-              hairColor={avatarConfig.hairColor}
-              facialHairType={avatarConfig.facialHairType}
-              facialHairColor={avatarConfig.facialHairColor}
-              clotheType={avatarConfig.clotheType}
-              clotheColor={avatarConfig.clotheColor}
-              eyeType={avatarConfig.eyeType}
-              eyebrowType={avatarConfig.eyebrowType}
-              mouthType={avatarConfig.mouthType}
-              skinColor={avatarConfig.skinColor}
-            />
-          </div>
-
-          <div className="flex gap-2 mt-2 justify-center">
-            <Button 
-              variant="default" 
-              onClick={randomizeAvatar}
-              className="gap-1"
+    <div className="flex flex-col gap-6 w-full max-w-5xl mx-auto">
+      <div className="flex flex-col md:flex-row gap-6 w-full">
+        {/* Avatar Preview Section - now within a Card */}
+        <Card className="flex-1 min-w-[300px]">
+          <CardContent className="flex items-center justify-center p-6">
+            <div
+              ref={avatarRef} // Use ref here for download
+              className="avatar-wrapper bg-accent p-8 rounded-full shadow-lg"
+              style={{ width: '280px', height: '280px' }}
             >
-              <RotateCcw className="h-4 w-4" />
-              Randomize
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              onClick={downloadAvatar}
-              className="gap-1"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-          </div>
-
-          <div className="flex gap-2 mt-4 justify-center">
-            <Button 
-              variant="default" 
-              onClick={() => onSave(avatarConfig)}
-              className="gap-1"
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </Button>
-            
-            {onCancel && (
-              <Button 
-                variant="ghost" 
-                onClick={onCancel}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-        </div>
+              {/* No need for #avatar-svg id wrapper if using useRef directly on the container */}
+              <Avatar
+                style={{ width: '100%', height: '100%' }}
+                {...avatarConfig} // Spread avatarConfig directly
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Customization Options Section */}
-        <div className="md:col-span-3">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Customize</h3>
+        <div className="flex flex-col gap-4 flex-1">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              className="w-full bg-primary hover:bg-primary/90"
+              onClick={randomizeAvatar}
+            >
+              <Shuffle className="mr-2 h-4 w-4" /> Randomize
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={downloadAvatar}
+            >
+              <Download className="mr-2 h-4 w-4" /> Download
+            </Button>
           </div>
 
+          <Separator className="my-2" />
+
+          {/* Tabbed Customization */}
           <Tabs defaultValue="head" className="w-full">
             <TabsList className="grid grid-cols-3 w-full mb-6 bg-muted/50">
-              <TabsTrigger value="head">Head & Hair</TabsTrigger>
+              <TabsTrigger value="head">Head</TabsTrigger>
               <TabsTrigger value="face">Face</TabsTrigger>
               <TabsTrigger value="clothes">Clothes</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="head" className="space-y-6 p-4 rounded-lg border">
-              <div className="space-y-4">
+
+            {/* Use ScrollArea for tab content */}
+            <ScrollArea className="h-[400px] mt-2 pr-4">
+              <TabsContent value="head" className="mt-0 space-y-6">
                 <div>
                   <Label className="text-sm font-medium mb-3 block">Hair Style</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -404,6 +384,7 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
 
                 <div>
                   <Label className="text-sm font-medium mb-3 block">Hair Color</Label>
+                  {/* Adjusted grid cols for color options to be more compact like original */}
                   <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
                     {optionGroups.hairColor.map((option) => (
                       <Button
@@ -421,6 +402,7 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
 
                 <div>
                   <Label className="text-sm font-medium mb-3 block">Skin Tone</Label>
+                  {/* Adjusted grid cols for color options to be more compact like original */}
                   <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                     {optionGroups.skinColor.map((option) => (
                       <Button
@@ -452,11 +434,9 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
                     ))}
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="face" className="space-y-6 p-4 rounded-lg border">
-              <div className="space-y-4">
+              </TabsContent>
+
+              <TabsContent value="face" className="mt-0 space-y-6">
                 <div>
                   <Label className="text-sm font-medium mb-3 block">Accessories</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -560,11 +540,9 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
                     ))}
                   </div>
                 </div>
-              </div>  
-            </TabsContent>
-            
-            <TabsContent value="clothes" className="space-y-6 p-4 rounded-lg border">
-              <div className="space-y-4">
+              </TabsContent>
+
+              <TabsContent value="clothes" className="mt-0 space-y-6">
                 <div>
                   <Label className="text-sm font-medium mb-3 block">Clothes</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -598,9 +576,29 @@ export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({
                     ))}
                   </div>
                 </div>
-              </div>
-            </TabsContent>
+              </TabsContent>
+            </ScrollArea>
           </Tabs>
+
+          {/* Save/Cancel Buttons - added to the bottom of the right panel */}
+          <div className="flex gap-2 justify-end mt-4"> {/* Aligned to end for a cleaner look */}
+            {onCancel && (
+              <Button
+                variant="ghost"
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              variant="default"
+              onClick={() => onSave(avatarConfig)}
+              className="gap-1"
+            >
+              <Save className="h-4 w-4" />
+              Save Avatar
+            </Button>
+          </div>
         </div>
       </div>
     </div>
