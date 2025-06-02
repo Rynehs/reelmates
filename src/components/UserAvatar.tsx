@@ -3,6 +3,7 @@ import { Avatar as UIAvatar, AvatarFallback, AvatarImage } from "@/components/ui
 import { User } from "@/lib/types";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import Avatar from 'avataaars';
 
 interface UserAvatarProps {
   user: Partial<User>;
@@ -59,29 +60,71 @@ const UserAvatar = ({
     setHasError(true);
   };
 
+  // Try to parse the avatar_url as a JSON config for avataaars
+  const getAvataarConfig = () => {
+    if (!user.avatar_url) return null;
+    
+    try {
+      const config = JSON.parse(user.avatar_url);
+      if (config && config.avatarStyle) {
+        return config as AvatarConfig;
+      }
+    } catch (e) {
+      // Not a valid JSON, so not an Avataar config
+      return null;
+    }
+    
+    return null;
+  };
+
+  const avataarConfig = getAvataarConfig();
+  const isAvataar = avataarConfig !== null;
+
   return (
     <UIAvatar className={`${getSize()} ${className} relative`}>
-      {user.avatar_url && !hasError && (
-        <>
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted z-10 rounded-full">
-              <Loader2 className="h-3 w-3 animate-spin" />
-            </div>
-          )}
-          
-          <AvatarImage 
-            src={user.avatar_url} 
-            alt={user.name || "User"} 
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            className={isLoading ? "opacity-0" : "opacity-100"}
+      {isAvataar ? (
+        <div className="w-full h-full overflow-hidden">
+          <Avatar
+            style={{ width: '100%', height: '100%' }}
+            avatarStyle={avataarConfig.avatarStyle}
+            topType={avataarConfig.topType}
+            accessoriesType={avataarConfig.accessoriesType}
+            hairColor={avataarConfig.hairColor}
+            facialHairType={avataarConfig.facialHairType}
+            facialHairColor={avataarConfig.facialHairColor}
+            clotheType={avataarConfig.clotheType}
+            clotheColor={avataarConfig.clotheColor}
+            eyeType={avataarConfig.eyeType}
+            eyebrowType={avataarConfig.eyebrowType}
+            mouthType={avataarConfig.mouthType}
+            skinColor={avataarConfig.skinColor}
           />
+        </div>
+      ) : (
+        <>
+          {user.avatar_url && !hasError && (
+            <>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted z-10 rounded-full">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                </div>
+              )}
+              
+              <AvatarImage 
+                src={user.avatar_url} 
+                alt={user.name || "User"} 
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+                className={isLoading ? "opacity-0" : "opacity-100"}
+              />
+            </>
+          )}
+          {(!user.avatar_url || hasError) && (
+            <AvatarFallback className={getFallbackSize()}>
+              {initials}
+            </AvatarFallback>
+          )}
         </>
-      )}
-      {(!user.avatar_url || hasError) && (
-        <AvatarFallback className={getFallbackSize()}>
-          {initials}
-        </AvatarFallback>
       )}
     </UIAvatar>
   );

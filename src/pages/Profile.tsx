@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client"; 
@@ -12,6 +13,8 @@ import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp
 import { Loader2, Copy, CheckCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import AvatarCustomizer from "@/components/AvatarCustomizer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +37,27 @@ const Profile = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [avatarMode, setAvatarMode] = useState<'preset' | 'custom'>('preset');
+  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Try to parse the current avatar_url as an Avataar config if it exists
+  const getCurrentAvataarConfig = (): AvatarConfig | undefined => {
+    if (!avatarUrl) return undefined;
+    
+    try {
+      const config = JSON.parse(avatarUrl);
+      if (config && config.avatarStyle) {
+        return config as AvatarConfig;
+      }
+    } catch (e) {
+      // Not a valid JSON, so not an Avataar config
+      return undefined;
+    }
+    
+    return undefined;
+  };
 
   useEffect(() => {
     const getUserSession = async () => {
@@ -133,6 +155,40 @@ const Profile = () => {
       });
     } catch (error: any) {
       console.error("Error updating avatar:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update avatar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveCustomAvatar = async (config: AvatarConfig) => {
+    setIsUpdating(true);
+    try {
+      // Convert the avatar config to a JSON string for storage
+      const avatarJson = JSON.stringify(config);
+      setAvatarUrl(avatarJson);
+      
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarJson })
+        .eq("id", profile?.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+      
+      setShowAvatarCustomizer(false);
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your custom avatar has been updated successfully",
+      });
+    } catch (error: any) {
+      console.error("Error updating custom avatar:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update avatar",
@@ -336,12 +392,27 @@ const Profile = () => {
               showLoadingState={isUpdating}
             />
             
-            <Button
-              onClick={() => setShowAvatarPicker(true)}
-              variant="outline"
-            >
-              Choose Avatar
-            </Button>
+            <div className="flex flex-col md:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  setAvatarMode('preset');
+                  setShowAvatarPicker(true);
+                }}
+                variant="outline"
+              >
+                Choose Preset Avatar
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  setAvatarMode('custom');
+                  setShowAvatarCustomizer(true);
+                }}
+                variant="outline"
+              >
+                Create Custom Avatar
+              </Button>
+            </div>
 
             {/* Avatar Picker Dialog */}
             <Dialog 
@@ -355,6 +426,23 @@ const Profile = () => {
                 <AvatarPicker
                   selectedAvatar={avatarUrl}
                   onSelect={handleSaveAvatar}
+                />
+              </DialogContent>
+            </Dialog>
+
+            {/* Avatar Customizer Dialog */}
+            <Dialog 
+              open={showAvatarCustomizer} 
+              onOpenChange={setShowAvatarCustomizer}
+            >
+              <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Customize Your Avatar</DialogTitle>
+                </DialogHeader>
+                <AvatarCustomizer
+                  initialConfig={getCurrentAvataarConfig()}
+                  onSave={handleSaveCustomAvatar}
+                  onCancel={() => setShowAvatarCustomizer(false)}
                 />
               </DialogContent>
             </Dialog>
