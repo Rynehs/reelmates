@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import AuthForm from "@/components/AuthForm";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -12,31 +11,46 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Check if user is already authenticated with Supabase
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setIsAuthenticated(true);
-        navigate("/dashboard");
-      }
-      
-      setIsLoading(false);
-      
-      // Subscribe to auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setIsAuthenticated(!!session);
-          
-          if (session) {
-            navigate("/dashboard");
-          }
+      try {
+        console.log('Checking session in Index...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session check error:', error);
+          setIsLoading(false);
+          return;
         }
-      );
-      
-      return () => {
-        subscription.unsubscribe();
-      };
+        
+        if (session) {
+          console.log('Session found in Index, redirecting to dashboard');
+          setIsAuthenticated(true);
+          navigate("/dashboard");
+          return;
+        }
+        
+        console.log('No session in Index');
+        setIsLoading(false);
+        
+        // Subscribe to auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (event, session) => {
+            console.log('Auth state change in Index:', event, !!session);
+            setIsAuthenticated(!!session);
+            
+            if (session) {
+              navigate("/dashboard");
+            }
+          }
+        );
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error in Index checkSession:', error);
+        setIsLoading(false);
+      }
     };
     
     checkSession();
@@ -45,7 +59,10 @@ const Index = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse-soft">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
