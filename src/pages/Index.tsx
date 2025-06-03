@@ -7,11 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const checkSession = async () => {
+    const checkAuthAndRedirect = async () => {
       try {
         console.log('Checking session in Index...');
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -24,36 +23,36 @@ const Index = () => {
         
         if (session) {
           console.log('Session found in Index, redirecting to dashboard');
-          setIsAuthenticated(true);
-          navigate("/dashboard");
+          navigate("/dashboard", { replace: true });
           return;
         }
         
-        console.log('No session in Index');
+        console.log('No session in Index, showing auth form');
         setIsLoading(false);
         
-        // Subscribe to auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, session) => {
-            console.log('Auth state change in Index:', event, !!session);
-            setIsAuthenticated(!!session);
-            
-            if (session) {
-              navigate("/dashboard");
-            }
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
-        console.error('Error in Index checkSession:', error);
+        console.error('Error in Index checkAuthAndRedirect:', error);
         setIsLoading(false);
       }
     };
     
-    checkSession();
+    checkAuthAndRedirect();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state change in Index:', event, !!session);
+        
+        if (session && event === 'SIGNED_IN') {
+          console.log('User signed in, redirecting to dashboard');
+          navigate("/dashboard", { replace: true });
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
   
   if (isLoading) {
@@ -65,10 +64,6 @@ const Index = () => {
         </div>
       </div>
     );
-  }
-  
-  if (isAuthenticated) {
-    return null; // Will redirect in useEffect
   }
   
   return (
