@@ -1,23 +1,32 @@
-
 import React, { useState, useCallback } from 'react';
 import Avatar from 'avataaars';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Download, Shuffle } from 'lucide-react';
-import { 
-  TopType, 
-  AccessoriesType, 
-  HairColor, 
-  FacialHairType, 
-  FacialHairColor, 
-  ClotheType, 
-  ClotheColor, 
-  EyeType, 
-  EyebrowType, 
-  MouthType, 
-  SkinColor 
-} from 'avataaars';
+
+// Define types locally since avataaars doesn't export them as named exports
+type TopType = 'NoHair' | 'Eyepatch' | 'Hat' | 'Hijab' | 'Turban' | 'WinterHat1' | 'WinterHat2' | 'WinterHat3' | 'WinterHat4' | 'LongHairBigHair' | 'LongHairBob' | 'LongHairBun' | 'LongHairCurly' | 'LongHairCurvy' | 'LongHairDreads' | 'LongHairFrida' | 'LongHairFro' | 'LongHairFroBand' | 'LongHairNotTooLong' | 'LongHairShavedSides' | 'LongHairMiaWallace' | 'LongHairStraight' | 'LongHairStraight2' | 'LongHairStraightStrand' | 'ShortHairDreads01' | 'ShortHairDreads02' | 'ShortHairFrizzle' | 'ShortHairShaggyMullet' | 'ShortHairShortCurly' | 'ShortHairShortFlat' | 'ShortHairShortRound' | 'ShortHairShortWaved' | 'ShortHairSides' | 'ShortHairTheCaesar' | 'ShortHairTheCaesarSidePart';
+
+type AccessoriesType = 'Blank' | 'Kurt' | 'Prescription01' | 'Prescription02' | 'Round' | 'Sunglasses' | 'Wayfarers';
+
+type HairColor = 'Auburn' | 'Black' | 'Blonde' | 'BlondeGolden' | 'Brown' | 'BrownDark' | 'PastelPink' | 'Platinum' | 'Red' | 'SilverGray';
+
+type FacialHairType = 'Blank' | 'BeardMedium' | 'BeardLight' | 'BeardMajestic' | 'MoustacheFancy' | 'MoustacheMagnum';
+
+type FacialHairColor = 'Auburn' | 'Black' | 'Blonde' | 'BlondeGolden' | 'Brown' | 'BrownDark' | 'Platinum' | 'Red';
+
+type ClotheType = 'BlazerShirt' | 'BlazerSweater' | 'CollarSweater' | 'GraphicShirt' | 'Hoodie' | 'Overall' | 'ShirtCrewNeck' | 'ShirtScoopNeck' | 'ShirtVNeck';
+
+type ClotheColor = 'Black' | 'Blue01' | 'Blue02' | 'Blue03' | 'Gray01' | 'Gray02' | 'Heather' | 'PastelBlue' | 'PastelGreen' | 'PastelOrange' | 'PastelRed' | 'PastelYellow' | 'Pink' | 'Red' | 'White';
+
+type EyeType = 'Close' | 'Cry' | 'Default' | 'Dizzy' | 'EyeRoll' | 'Happy' | 'Hearts' | 'Side' | 'Squint' | 'Surprised' | 'Wink' | 'WinkWacky';
+
+type EyebrowType = 'Angry' | 'AngryNatural' | 'Default' | 'DefaultNatural' | 'FlatNatural' | 'RaisedExcited' | 'RaisedExcitedNatural' | 'SadConcerned' | 'SadConcernedNatural' | 'UnibrowNatural' | 'UpDown' | 'UpDownNatural';
+
+type MouthType = 'Concerned' | 'Default' | 'Disbelief' | 'Eating' | 'Grimace' | 'Sad' | 'ScreamOpen' | 'Serious' | 'Smile' | 'Tongue' | 'Twinkle' | 'Vomit';
+
+type SkinColor = 'Tanned' | 'Yellow' | 'Pale' | 'Light' | 'Brown' | 'DarkBrown' | 'Black';
 
 interface AvatarOptions {
   topType: TopType;
@@ -31,6 +40,12 @@ interface AvatarOptions {
   eyebrowType: EyebrowType;
   mouthType: MouthType;
   skinColor: SkinColor;
+}
+
+interface AvatarCustomizerProps {
+  initialConfig?: AvatarOptions;
+  onSave?: (config: AvatarOptions) => void;
+  onCancel?: () => void;
 }
 
 const topTypes: TopType[] = ['NoHair', 'Eyepatch', 'Hat', 'Hijab', 'Turban', 'WinterHat1', 'WinterHat2', 'WinterHat3', 'WinterHat4', 'LongHairBigHair', 'LongHairBob', 'LongHairBun', 'LongHairCurly', 'LongHairCurvy', 'LongHairDreads', 'LongHairFrida', 'LongHairFro', 'LongHairFroBand', 'LongHairNotTooLong', 'LongHairShavedSides', 'LongHairMiaWallace', 'LongHairStraight', 'LongHairStraight2', 'LongHairStraightStrand', 'ShortHairDreads01', 'ShortHairDreads02', 'ShortHairFrizzle', 'ShortHairShaggyMullet', 'ShortHairShortCurly', 'ShortHairShortFlat', 'ShortHairShortRound', 'ShortHairShortWaved', 'ShortHairSides', 'ShortHairTheCaesar', 'ShortHairTheCaesarSidePart'];
@@ -55,20 +70,26 @@ const mouthTypes: MouthType[] = ['Concerned', 'Default', 'Disbelief', 'Eating', 
 
 const skinColors: SkinColor[] = ['Tanned', 'Yellow', 'Pale', 'Light', 'Brown', 'DarkBrown', 'Black'];
 
-const AvatarCustomizer: React.FC = () => {
-  const [avatarOptions, setAvatarOptions] = useState<AvatarOptions>({
-    topType: 'ShortHairShortCurly',
-    accessoriesType: 'Blank',
-    hairColor: 'BrownDark',
-    facialHairType: 'Blank',
-    facialHairColor: 'BrownDark',
-    clotheType: 'BlazerShirt',
-    clotheColor: 'PastelBlue',
-    eyeType: 'Happy',
-    eyebrowType: 'Default',
-    mouthType: 'Smile',
-    skinColor: 'Light',
-  });
+const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ 
+  initialConfig, 
+  onSave, 
+  onCancel 
+}) => {
+  const [avatarOptions, setAvatarOptions] = useState<AvatarOptions>(
+    initialConfig || {
+      topType: 'ShortHairShortCurly',
+      accessoriesType: 'Blank',
+      hairColor: 'BrownDark',
+      facialHairType: 'Blank',
+      facialHairColor: 'BrownDark',
+      clotheType: 'BlazerShirt',
+      clotheColor: 'PastelBlue',
+      eyeType: 'Happy',
+      eyebrowType: 'Default',
+      mouthType: 'Smile',
+      skinColor: 'Light',
+    }
+  );
 
   const randomizeAvatar = useCallback(() => {
     const getRandomItem = <T,>(array: T[]): T => {
@@ -145,6 +166,12 @@ const AvatarCustomizer: React.FC = () => {
     </Card>
   );
 
+  const handleSave = () => {
+    if (onSave) {
+      onSave(avatarOptions);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="text-center mb-6">
@@ -177,6 +204,18 @@ const AvatarCustomizer: React.FC = () => {
                   Download
                 </Button>
               </div>
+              {onSave && (
+                <div className="flex gap-2 w-full">
+                  <Button onClick={handleSave} className="flex-1">
+                    Save Avatar
+                  </Button>
+                  {onCancel && (
+                    <Button onClick={onCancel} variant="outline" className="flex-1">
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

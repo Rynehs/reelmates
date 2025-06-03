@@ -435,7 +435,7 @@ const Profile = () => {
               open={showAvatarCustomizer} 
               onOpenChange={setShowAvatarCustomizer}
             >
-              <DialogContent className="sm:max-w-xl">
+              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Customize Your Avatar</DialogTitle>
                 </DialogHeader>
