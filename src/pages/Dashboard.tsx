@@ -16,28 +16,28 @@ import { MediaItem } from "@/lib/types";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   
   useEffect(() => {
-    const checkAuthAndProfile = async () => {
+    const checkAuth = async () => {
       try {
-        console.log('Checking authentication in Dashboard...');
+        console.log('Dashboard: Checking authentication...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Auth session error:', error);
-          navigate('/login');
+          console.error('Dashboard auth error:', error);
+          navigate('/', { replace: true });
           return;
         }
         
         if (!session) {
-          console.log('No session found, redirecting to login');
-          navigate('/login');
+          console.log('Dashboard: No session, redirecting to home');
+          navigate('/', { replace: true });
           return;
         }
         
-        console.log('Session found:', session.user.id);
+        console.log('Dashboard: User authenticated:', session.user.id);
         setUser(session.user);
         
         // Check if profile exists and onboarding is completed
@@ -47,29 +47,29 @@ const Dashboard = () => {
           .eq("id", session.user.id)
           .single();
         
-        if (profileError) {
+        if (profileError && profileError.code !== 'PGRST116') {
           console.error('Profile error:', profileError);
-          // If profile doesn't exist, redirect to onboarding
+          // If there's an error other than "not found", redirect to onboarding
           navigate("/onboarding", { replace: true });
           return;
         }
         
-        if (profile && profile.onboarding_completed === false) {
-          console.log('Onboarding not completed, redirecting...');
+        if (!profile || profile.onboarding_completed === false) {
+          console.log('Dashboard: Onboarding not completed, redirecting...');
           navigate("/onboarding", { replace: true });
           return;
         }
         
-        console.log('Authentication and profile check complete');
-        setIsAuthenticating(false);
+        console.log('Dashboard: Authentication complete, loading dashboard');
+        setIsLoading(false);
         
       } catch (error) {
         console.error('Dashboard auth check error:', error);
-        navigate('/login');
+        navigate('/', { replace: true });
       }
     };
     
-    checkAuthAndProfile();
+    checkAuth();
   }, [navigate]);
 
   // Define all queries
@@ -79,7 +79,7 @@ const Dashboard = () => {
       const response = await fetchTrendingMovies();
       return response.results;
     },
-    enabled: !isAuthenticating // Only run queries when authenticated
+    enabled: !isLoading && !!user
   });
 
   const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
@@ -88,7 +88,7 @@ const Dashboard = () => {
       const response = await fetchPopularMovies();
       return response.results;
     },
-    enabled: !isAuthenticating
+    enabled: !isLoading && !!user
   });
 
   const { data: actionMovies = [], isLoading: isActionLoading } = useQuery({
@@ -97,7 +97,7 @@ const Dashboard = () => {
       const response = await discoverMovies({ with_genres: '28' });
       return response.results;
     },
-    enabled: !isAuthenticating
+    enabled: !isLoading && !!user
   });
 
   const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery({
@@ -106,7 +106,7 @@ const Dashboard = () => {
       const response = await discoverMovies({ with_genres: '35' });
       return response.results;
     },
-    enabled: !isAuthenticating
+    enabled: !isLoading && !!user
   });
 
   const goToSearch = () => {
@@ -114,7 +114,7 @@ const Dashboard = () => {
   };
 
   // Show loading while checking authentication
-  if (isAuthenticating) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

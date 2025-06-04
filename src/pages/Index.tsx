@@ -12,26 +12,26 @@ const Index = () => {
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       try {
-        console.log('Checking session in Index...');
+        console.log('Index: Checking session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Session check error:', error);
+          console.error('Index session check error:', error);
           setIsLoading(false);
           return;
         }
         
         if (session) {
-          console.log('Session found in Index, redirecting to dashboard');
+          console.log('Index: Session found, redirecting to dashboard');
           navigate("/dashboard", { replace: true });
           return;
         }
         
-        console.log('No session in Index, showing auth form');
+        console.log('Index: No session, showing auth form');
         setIsLoading(false);
         
       } catch (error) {
-        console.error('Error in Index checkAuthAndRedirect:', error);
+        console.error('Index error:', error);
         setIsLoading(false);
       }
     };
@@ -41,10 +41,10 @@ const Index = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state change in Index:', event, !!session);
+        console.log('Index: Auth state change:', event, !!session);
         
         if (session && event === 'SIGNED_IN') {
-          console.log('User signed in, redirecting to dashboard');
+          console.log('Index: User signed in, redirecting to dashboard');
           navigate("/dashboard", { replace: true });
         }
       }
