@@ -13,6 +13,7 @@ import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp
 import { Loader2, Copy, CheckCircle, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import { AvatarCustomizer } from "@/components/AvatarCustomizer";
 
 const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +35,7 @@ const Profile = () => {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [avatarTab, setAvatarTab] = useState<"preset" | "custom">("preset");
+  const [avatarTab, setAvatarTab] = useState<"preset" | "custom" | "customize">("preset");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -407,15 +408,22 @@ const Profile = () => {
               showLoadingState={isUpdating}
             />
             
-            <Tabs value={avatarTab} onValueChange={(v) => setAvatarTab(v as "preset" | "custom")}>
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs value={avatarTab} onValueChange={(v) => setAvatarTab(v as "preset" | "custom" | "customize")}>
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="preset">Preset Avatars</TabsTrigger>
+                <TabsTrigger value="customize">Customize Avatar</TabsTrigger>
                 <TabsTrigger value="custom">Custom Upload</TabsTrigger>
               </TabsList>
               <TabsContent value="preset" className="mt-4">
                 <AvatarPicker
                   selectedAvatar={avatarUrl}
                   onSelect={handleSelectPresetAvatar}
+                />
+              </TabsContent>
+              <TabsContent value="customize" className="mt-4">
+                <AvatarCustomizer
+                  onSelect={handleSelectPresetAvatar}
+                  initialConfig={avatarUrl}
                 />
               </TabsContent>
               <TabsContent value="custom" className="mt-4">
