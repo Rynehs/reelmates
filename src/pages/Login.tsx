@@ -18,38 +18,19 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      try {
-        console.log('Checking session in Login page...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session check error:', error);
-          setIsCheckingAuth(false);
-          return;
-        }
-        
-        if (session) {
-          console.log('Session found in Login, redirecting to dashboard');
-          navigate("/dashboard", { replace: true });
-          return;
-        }
-        
-        console.log('No session in Login, showing auth form');
-        setIsCheckingAuth(false);
-        
-      } catch (error) {
-        console.error('Error in Login checkAuthAndRedirect:', error);
-        setIsCheckingAuth(false);
+    // Check if user is already authenticated
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/dashboard");
       }
     };
     
-    checkAuthAndRedirect();
+    checkSession();
   }, [navigate]);
 
   const clearError = () => setError(null);
@@ -67,44 +48,39 @@ const Login = () => {
     
     try {
       if (mode === "login") {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) throw error;
         
-        if (data.user) {
-          toast({
-            title: "Logged in successfully",
-            description: "Welcome back to ReelMates!",
-          });
-          
-          // Force a page reload to the dashboard
-          window.location.href = '/dashboard';
-        }
+        toast({
+          title: "Logged in successfully",
+          description: "Welcome back to ReelMates!",
+        });
+        
+        navigate("/dashboard");
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        // Store username in metadata when registering
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              username,
+              username, // Store the username in user metadata
             },
           },
         });
         
         if (error) throw error;
         
-        if (data.user) {
-          toast({
-            title: "Account created successfully",
-            description: "Welcome to ReelMates!",
-          });
-          
-          // Force a page reload to the dashboard
-          window.location.href = '/dashboard';
-        }
+        toast({
+          title: "Account created successfully",
+          description: "Welcome to ReelMates!",
+        });
+        
+        navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -122,7 +98,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: window.location.origin,
         }
       });
       
@@ -134,17 +110,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col">

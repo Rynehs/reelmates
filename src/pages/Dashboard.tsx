@@ -16,70 +16,15 @@ import { MediaItem } from "@/lib/types";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [checkedOnboarding, setCheckedOnboarding] = useState(false);
   
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('Dashboard: Checking authentication...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Dashboard auth error:', error);
-          navigate('/', { replace: true });
-          return;
-        }
-        
-        if (!session) {
-          console.log('Dashboard: No session, redirecting to home');
-          navigate('/', { replace: true });
-          return;
-        }
-        
-        console.log('Dashboard: User authenticated:', session.user.id);
-        setUser(session.user);
-        
-        // Check if profile exists and onboarding is completed
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", session.user.id)
-          .single();
-        
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Profile error:', profileError);
-          // If there's an error other than "not found", redirect to onboarding
-          navigate("/onboarding", { replace: true });
-          return;
-        }
-        
-        if (!profile || profile.onboarding_completed === false) {
-          console.log('Dashboard: Onboarding not completed, redirecting...');
-          navigate("/onboarding", { replace: true });
-          return;
-        }
-        
-        console.log('Dashboard: Authentication complete, loading dashboard');
-        setIsLoading(false);
-        
-      } catch (error) {
-        console.error('Dashboard auth check error:', error);
-        navigate('/', { replace: true });
-      }
-    };
-    
-    checkAuth();
-  }, [navigate]);
-
-  // Define all queries
+  // Define all queries first to ensure they're always called in the same order
   const { data: trendingMovies = [], isLoading: isTrendingLoading } = useQuery({
     queryKey: ['trendingMovies'],
     queryFn: async () => {
       const response = await fetchTrendingMovies();
       return response.results;
     },
-    enabled: !isLoading && !!user
   });
 
   const { data: popularMovies = [], isLoading: isPopularLoading } = useQuery({
@@ -88,7 +33,6 @@ const Dashboard = () => {
       const response = await fetchPopularMovies();
       return response.results;
     },
-    enabled: !isLoading && !!user
   });
 
   const { data: actionMovies = [], isLoading: isActionLoading } = useQuery({
@@ -97,7 +41,6 @@ const Dashboard = () => {
       const response = await discoverMovies({ with_genres: '28' });
       return response.results;
     },
-    enabled: !isLoading && !!user
   });
 
   const { data: comedyMovies = [], isLoading: isComedyLoading } = useQuery({
@@ -106,29 +49,38 @@ const Dashboard = () => {
       const response = await discoverMovies({ with_genres: '35' });
       return response.results;
     },
-    enabled: !isLoading && !!user
   });
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", data.session.user.id)
+        .single();
+      if (profile && profile.onboarding_completed === false) {
+        navigate("/onboarding", { replace: true });
+      } else {
+        setCheckedOnboarding(true);
+      }
+    })();
+  }, [navigate]);
 
   const goToSearch = () => {
     navigate('/search');
   };
 
-  // Show loading while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Define placeholder data
   const watchedMovies: MediaItem[] = [];
   const toWatchMovies: MediaItem[] = [];
   const favoriteMovies: MediaItem[] = [];
+  
+  // Only render the main content when onboarding has been checked
+  if (!checkedOnboarding) {
+    return null;
+  }
   
   return (
     <div className="min-h-screen bg-background">

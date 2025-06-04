@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -20,6 +21,7 @@ const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const clearError = () => setError(null);
 
@@ -36,44 +38,40 @@ const AuthForm = () => {
     
     try {
       if (mode === "login") {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) throw error;
         
-        if (data.user) {
-          toast({
-            title: "Logged in successfully",
-            description: "Welcome to ReelMates!",
-          });
-          
-          // Force a page reload to the dashboard
-          window.location.href = '/dashboard';
-        }
+        toast({
+          title: "Logged in successfully",
+          description: "Welcome to ReelMates!",
+        });
+        
+        navigate("/dashboard");
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        // When registering, store the name in the user metadata
+        // This will be used by the handle_new_user trigger to populate the profiles table
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              name: name,
+              name: name, // Store the name in user metadata
             },
           },
         });
         
         if (error) throw error;
         
-        if (data.user) {
-          toast({
-            title: "Account created successfully",
-            description: "Welcome to ReelMates!",
-          });
-          
-          // Force a page reload to the dashboard
-          window.location.href = '/dashboard';
-        }
+        toast({
+          title: "Account created successfully",
+          description: "Welcome to ReelMates!",
+        });
+        
+        navigate("/dashboard");
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -91,7 +89,7 @@ const AuthForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: window.location.origin,
         }
       });
       

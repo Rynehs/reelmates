@@ -4,66 +4,54 @@ import { useNavigate } from "react-router-dom";
 import AuthForm from "@/components/AuthForm";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      try {
-        console.log('Index: Checking session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Index session check error:', error);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (session) {
-          console.log('Index: Session found, redirecting to dashboard');
-          navigate("/dashboard", { replace: true });
-          return;
-        }
-        
-        console.log('Index: No session, showing auth form');
-        setIsLoading(false);
-        
-      } catch (error) {
-        console.error('Index error:', error);
-        setIsLoading(false);
+    // Check if user is already authenticated with Supabase
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        setIsAuthenticated(true);
+        navigate("/dashboard");
       }
+      
+      setIsLoading(false);
+      
+      // Subscribe to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setIsAuthenticated(!!session);
+          
+          if (session) {
+            navigate("/dashboard");
+          }
+        }
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     };
     
-    checkAuthAndRedirect();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Index: Auth state change:', event, !!session);
-        
-        if (session && event === 'SIGNED_IN') {
-          console.log('Index: User signed in, redirecting to dashboard');
-          navigate("/dashboard", { replace: true });
-        }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+    checkSession();
   }, [navigate]);
   
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
+        <div className="animate-pulse-soft">Loading...</div>
       </div>
     );
+  }
+  
+  if (isAuthenticated) {
+    return null; // Will redirect in useEffect
   }
   
   return (

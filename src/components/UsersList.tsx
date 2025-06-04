@@ -27,7 +27,7 @@ const UsersList = () => {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       return session?.user ?? null;
-    }
+    },
   });
 
   const { data: users, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -77,7 +77,7 @@ const UsersList = () => {
       
       return profilesWithCounts;
     },
-    enabled: !!currentUser
+    enabled: !!currentUser,
   });
 
   const { data: following, isLoading: followingLoading, refetch: refetchFollowing } = useQuery({
@@ -100,7 +100,7 @@ const UsersList = () => {
       console.log("Fetched following relationships:", data?.length || 0);
       return data?.map(f => f.following_id) || [];
     },
-    enabled: !!currentUser
+    enabled: !!currentUser,
   });
 
   const handleFollow = async (userId: string) => {
