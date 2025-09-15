@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateTOTPSecret, validateTOTP, generateBackupCodes } from "@/lib/otp";
 import { Loader2, Copy, CheckCircle, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { AvatarCustomizer } from "@/components/AvatarCustomizer";
 
@@ -22,6 +23,8 @@ const Profile = () => {
     username: string | null;
     avatar_url: string | null;
     two_factor_enabled: boolean | null;
+    profile_visibility: string | null;
+    movie_list_visibility: string | null;
   } | null>(null);
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -36,6 +39,8 @@ const Profile = () => {
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [avatarTab, setAvatarTab] = useState<"preset" | "custom" | "customize">("preset");
+  const [profileVisibility, setProfileVisibility] = useState<string>("public");
+  const [movieListVisibility, setMovieListVisibility] = useState<string>("public");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -95,6 +100,8 @@ const Profile = () => {
           setUsername(profileData.username || '');
           setAvatarUrl(profileData.avatar_url || '');
           setTwoFactorEnabled(profileData.two_factor_enabled || false);
+          setProfileVisibility(profileData.profile_visibility || 'public');
+          setMovieListVisibility(profileData.movie_list_visibility || 'public');
         }
       } catch (error) {
         console.error("Error:", error);
@@ -236,6 +243,40 @@ const Profile = () => {
       toast({
         title: "Error",
         description: "Failed to update username",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handlePrivacyUpdate = async (field: 'profile_visibility' | 'movie_list_visibility', value: string) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ [field]: value })
+        .eq("id", profile?.id);
+
+      if (error) {
+        throw error;
+      }
+
+      if (field === 'profile_visibility') {
+        setProfileVisibility(value);
+      } else {
+        setMovieListVisibility(value);
+      }
+
+      toast({
+        title: "Privacy settings updated",
+        description: "Your privacy settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating privacy settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update privacy settings",
         variant: "destructive",
       });
     } finally {
@@ -487,6 +528,48 @@ const Profile = () => {
                 "Update Username"
               )}
             </Button>
+          </div>
+
+          {/* Privacy Settings */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Privacy Settings</h2>
+            <div className="grid w-full max-w-sm mx-auto items-center gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="profile-visibility">Profile Visibility</Label>
+                <Select 
+                  value={profileVisibility} 
+                  onValueChange={(value) => handlePrivacyUpdate('profile_visibility', value)}
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select profile visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public - Everyone can see your profile</SelectItem>
+                    <SelectItem value="friends">Friends Only - Only people you follow can see your profile</SelectItem>
+                    <SelectItem value="private">Private - Only you can see your profile</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="movie-list-visibility">Movie List Visibility</Label>
+                <Select 
+                  value={movieListVisibility} 
+                  onValueChange={(value) => handlePrivacyUpdate('movie_list_visibility', value)}
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select movie list visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public - Everyone can see your movie lists</SelectItem>
+                    <SelectItem value="friends">Friends Only - Only people you follow can see your movie lists</SelectItem>
+                    <SelectItem value="private">Private - Only you can see your movie lists</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Two-Factor Authentication */}

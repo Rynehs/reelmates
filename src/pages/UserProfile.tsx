@@ -19,6 +19,8 @@ interface UserData {
   created_at: string;
   followers_count: number;
   following_count: number;
+  profile_visibility: string | null;
+  movie_list_visibility: string | null;
 }
 
 interface UserMovie {
@@ -44,7 +46,19 @@ const UserProfile = () => {
   const [userRooms, setUserRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [canViewProfile, setCanViewProfile] = useState(false);
+  const [canViewMovies, setCanViewMovies] = useState(false);
   
+  // Get current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    getCurrentUser();
+  }, []);
+
   // Fetch user data including profile, follower/following counts, rooms, and movies
   useEffect(() => {
     const fetchUserData = async () => {
@@ -104,21 +118,53 @@ const UserProfile = () => {
         setUserData(userData);
         console.log("Combined user data:", userData);
         
-        // Fetch user's movies with detailed information
-        const { data: moviesData, error: moviesError } = await supabase
-          .from("user_movies")
-          .select("*")
-          .eq("user_id", id)
-          .order("created_at", { ascending: false });
+        // Check privacy settings
+        const isOwnProfile = currentUser?.id === id;
+        const profileIsPublic = userData.profile_visibility === 'public';
+        const movieListIsPublic = userData.movie_list_visibility === 'public';
         
-        if (moviesError) {
-          console.error("Error fetching user movies:", moviesError);
-          throw new Error(`Failed to fetch user movies: ${moviesError.message}`);
+        // Check if current user is following this user
+        let isFollowing = false;
+        if (currentUser && !isOwnProfile) {
+          const { data: followData } = await supabase
+            .from("user_followers")
+            .select("id")
+            .eq("follower_id", currentUser.id)
+            .eq("following_id", id)
+            .single();
+          isFollowing = !!followData;
         }
         
-        // Explicitly cast the movies data to match our UserMovie interface
-        setUserMovies((moviesData || []) as UserMovie[]);
-        console.log("Fetched user movies:", moviesData?.length || 0);
+        const canViewProfile = isOwnProfile || profileIsPublic || 
+          (userData.profile_visibility === 'friends' && isFollowing);
+        const canViewMovies = isOwnProfile || movieListIsPublic || 
+          (userData.movie_list_visibility === 'friends' && isFollowing);
+          
+        setCanViewProfile(canViewProfile);
+        setCanViewMovies(canViewMovies);
+        
+        if (!canViewProfile) {
+          setError("This profile is private");
+          return;
+        }
+        
+        // Fetch user's movies with detailed information (only if allowed)
+        if (canViewMovies) {
+          const { data: moviesData, error: moviesError } = await supabase
+            .from("user_movies")
+            .select("*")
+            .eq("user_id", id)
+            .order("created_at", { ascending: false });
+
+          if (moviesError) {
+            console.error("Error fetching user movies:", moviesError);
+            // Don't throw error for movies, just log it
+          } else {
+            // Explicitly cast the movies data to match our UserMovie interface
+            setUserMovies((moviesData || []) as UserMovie[]);
+            console.log("Fetched user movies:", moviesData?.length || 0);
+          }
+        }
 
         // Fetch user's rooms
         const { data: roomsData, error: roomsError } = await supabase
@@ -156,7 +202,7 @@ const UserProfile = () => {
     };
     
     fetchUserData();
-  }, [id, toast]);
+  }, [id, toast, currentUser]);
   
   // Prepare movie media items for display
   useEffect(() => {
@@ -311,25 +357,26 @@ const UserProfile = () => {
 
           {/* User Movies Tabs */}
           <div className="w-full md:w-2/3">
-            <Tabs defaultValue="all">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">
-                  <Film className="mr-2 h-4 w-4" />
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="watched">
-                  <Check className="mr-2 h-4 w-4" />
-                  Watched
-                </TabsTrigger>
-                <TabsTrigger value="watchlist">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Watchlist
-                </TabsTrigger>
-                <TabsTrigger value="favorites">
-                  <Heart className="mr-2 h-4 w-4" />
-                  Favorites
-                </TabsTrigger>
-              </TabsList>
+            {canViewMovies ? (
+              <Tabs defaultValue="all">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="all">
+                    <Film className="mr-2 h-4 w-4" />
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger value="watched">
+                    <Check className="mr-2 h-4 w-4" />
+                    Watched
+                  </TabsTrigger>
+                  <TabsTrigger value="watchlist">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Watchlist
+                  </TabsTrigger>
+                  <TabsTrigger value="favorites">
+                    <Heart className="mr-2 h-4 w-4" />
+                    Favorites
+                  </TabsTrigger>
+                </TabsList>
               
               <TabsContent value="all" className="mt-6">
                 <Card>
@@ -477,7 +524,23 @@ const UserProfile = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-            </Tabs>
+              </Tabs>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Movie Lists</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <Film className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-medium">Private Movie Lists</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      This user's movie lists are private
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>
