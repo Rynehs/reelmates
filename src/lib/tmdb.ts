@@ -1,7 +1,7 @@
 // TMDB API client
 import { Movie, TVShow, MovieDetails, TVShowDetails, Genre, MediaItem, SearchResults } from "@/lib/types";
 
-const API_KEY = "22766f958212a9c2cf269d2e6b06a577";
+const API_KEY = "a98d1148719d511382c986afb370c852";
 const BASE_URL = "https://api.themoviedb.org/3";
 
 export interface MediaResponse {

@@ -2,7 +2,7 @@
 import { Movie, MovieDetails, SearchResults } from './types';
 
 // For now, we'll use a placeholder API key - this should be replaced with a proper environment variable
-const TMDB_API_KEY = 'YOUR_TMDB_API_KEY'; // Replace with your API key
+const TMDB_API_KEY = 'a98d1148719d511382c986afb370c852'; // Replace with your API key
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
